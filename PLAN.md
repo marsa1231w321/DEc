@@ -93,11 +93,12 @@
 
 ### F0.7 — Абстракция host-window
 
-- **Статус:** `TODO`
+- **Статус:** `PARTIAL`; protocol и Win32/detached реализации добавлены, проходят headless-проверки; требуется полный CI и ручной Windows GUI smoke.
 - **Pre:** нет.
 - **Задача:** интерфейс `HostWindowBackend`, Win32 backend по умолчанию, место для SDL2/Qt backend.
 - **DoD:** интерфейс зафиксирован; вне Windows viewport может открываться отдельно без правок рендера.
 - **Risk:** Win32-only связь сейчас — главное платформенное ограничение; без абстракции перенос будет дороже.
+- **Контекст:** `dec_engine/host_window.py` отделяет встраивание/resize от Tk UI через `HostWindowBackend`. Windows использует прежний Win32 путь; остальные платформы показывают GLFW viewport отдельным окном и не меняют renderer. Выбор backend и detached visibility покрыты headless-тестами; фактическое поведение viewport вне Windows требует ручной проверки на этой платформе.
 
 ### F0.8 — Фиксация зависимостей
 

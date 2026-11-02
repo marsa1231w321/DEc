@@ -1,4 +1,3 @@
-import ctypes
 import os
 import pickle
 import re
@@ -8,7 +7,6 @@ import tempfile
 import tkinter as tk
 import uuid
 import zipfile
-from ctypes import wintypes
 from functools import wraps
 from pathlib import PurePosixPath
 from tkinter import colorchooser, filedialog, messagebox, ttk
@@ -30,6 +28,7 @@ from .asset_pack import (
 from .camera import Camera
 from .commands import CommandStack, build_scene_delta
 from .events import ResourceChanged, SelectionChanged
+from .host_window import HostWindowBackend, create_host_window_backend
 from .loader import load_model
 from .logic import KEY_CODES, LogicRuntime
 from .project import load_project, save_project
@@ -60,7 +59,13 @@ def _undoable(method):
 
 
 class EditorUI:
-    def __init__(self, scene: Scene, camera: Camera, viewport_window=None):
+    def __init__(
+        self,
+        scene: Scene,
+        camera: Camera,
+        viewport_window=None,
+        host_window_backend: HostWindowBackend | None = None,
+    ):
         self.scene = scene
         self.camera = camera
         self.output_camera = Camera(
@@ -79,6 +84,7 @@ class EditorUI:
         self._output_follow_key = None
         self._output_follow_target = None
         self.viewport_window = viewport_window
+        self.host_window_backend = host_window_backend or create_host_window_backend()
         self._viewport_resize_after_id = None
         self._viewport_size = None
         self.logic = LogicRuntime()
@@ -511,43 +517,15 @@ class EditorUI:
     def _embed_viewport(self):
         if self.viewport_window is None:
             return
-        if os.name != "nt":
-            return
         self.root.update_idletasks()
-        hwnd = int(__import__("glfw").get_win32_window(self.viewport_window))
-        host_hwnd = self.viewport_host.winfo_id()
-        user32 = ctypes.windll.user32
-        user32.SetParent.argtypes = (wintypes.HWND, wintypes.HWND)
-        user32.SetParent.restype = wintypes.HWND
-        user32.GetWindowLongPtrW.argtypes = (wintypes.HWND, ctypes.c_int)
-        user32.GetWindowLongPtrW.restype = ctypes.c_ssize_t
-        user32.SetWindowLongPtrW.argtypes = (
-            wintypes.HWND,
-            ctypes.c_int,
-            ctypes.c_ssize_t,
+        self.host_window_backend.embed(
+            self.viewport_window, self.viewport_host.winfo_id()
         )
-        user32.SetWindowLongPtrW.restype = ctypes.c_ssize_t
-        user32.SetWindowPos.argtypes = (
-            wintypes.HWND,
-            wintypes.HWND,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            wintypes.UINT,
-        )
-        user32.SetWindowPos.restype = wintypes.BOOL
-        user32.SetParent(ctypes.c_void_p(hwnd), ctypes.c_void_p(host_hwnd))
-        style = user32.GetWindowLongPtrW(ctypes.c_void_p(hwnd), -16)
-        style = (style & ~0x00C00000 & ~0x00040000) | 0x40000000 | 0x10000000
-        user32.SetWindowLongPtrW(ctypes.c_void_p(hwnd), -16, style)
-        user32.SetWindowPos(ctypes.c_void_p(hwnd), None, 0, 0, 1, 1, 0x0040 | 0x0010)
         self._resize_viewport()
 
     def _resize_viewport(self, _event=None):
         if (
             self.viewport_window is None
-            or os.name != "nt"
             or self.closing
             or self._viewport_resize_after_id is not None
         ):
@@ -558,7 +536,7 @@ class EditorUI:
 
     def _apply_viewport_resize(self):
         self._viewport_resize_after_id = None
-        if self.viewport_window is None or os.name != "nt" or self.closing:
+        if self.viewport_window is None or self.closing:
             return
         if not self.viewport_host.winfo_exists():
             return
@@ -568,20 +546,11 @@ class EditorUI:
             return
         if self._viewport_size == (width, height):
             return
-        hwnd = int(__import__("glfw").get_win32_window(self.viewport_window))
-        ctypes.windll.user32.MoveWindow.argtypes = (
-            wintypes.HWND,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            wintypes.BOOL,
-        )
-        ctypes.windll.user32.MoveWindow.restype = wintypes.BOOL
-        if not ctypes.windll.user32.MoveWindow(hwnd, 0, 0, width, height, True):
-            self.status.set(f"Ошибка изменения размера 3D-окна: {ctypes.WinError()}")
-        else:
+        try:
+            self.host_window_backend.resize(self.viewport_window, width, height)
             self._viewport_size = (width, height)
+        except OSError as error:
+            self.status.set(f"Ошибка изменения размера 3D-окна: {error}")
 
     def apply_layout_profile(self):
         profile = self.layout_profile.get()

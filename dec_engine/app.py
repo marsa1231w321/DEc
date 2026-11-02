@@ -19,6 +19,7 @@ from .input_state import (
     mouse_button_down,
     poll_viewport_input,
 )
+from .host_window import create_host_window_backend
 from .logging_config import configure_logging, get_logger
 
 
@@ -137,7 +138,12 @@ def run_app(model_path=None):
     scene = build_demo_scene(model_path=model_path)
     from .editor import EditorUI
 
-    editor = EditorUI(scene, camera, viewport_window=window)
+    editor = EditorUI(
+        scene,
+        camera,
+        viewport_window=window,
+        host_window_backend=create_host_window_backend(),
+    )
     playtest = PlaytestController()
 
     was_playtesting = False
