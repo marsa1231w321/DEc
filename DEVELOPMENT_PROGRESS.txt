@@ -188,3 +188,14 @@ P1.3 — тесты формата, пакетов и битых архивов 
 - Проверки: pytest `60 passed, 20 subtests` (+10 новых); Ruff lint/format, Pyright `0 errors`, compileall и smoke-test (`0.1.0 5`) прошли.
 - Обновлены `PLAN.md` (P1.3 → `PARTIAL`, очередь), `README.md`, `DEVELOPMENT_GUIDE.md` (карта модулей и список тестов). Динамическая документация актуальна.
 - Статус оставлен `PARTIAL`: DoD подтверждён локально, но удалённый CI этой ревизии не запускался (push запрещён). Следующий независимый незаблокированный пункт — P1.1 (валидация карты: уровни blocker/warning и переход к проблемному свойству); P1.2/P1.4 зависят от незакрытых F0.2/F0.6.
+
+P1.1 — валидация карты: уровни и навигация (PARTIAL)
+----------------------------------------------------
+- `dec_engine/validation.py` переработан без изменения текстов сообщений: добавлены `ValidationIssue` (`severity` = `blocker`/`warning`, `object_id`, `object_name`, `property_name`, read-only alias `property` и `is_blocker`), `collect_validation_issues()`, `blocking_issues()`, `has_blockers()`. `validate_scene()` сохранён как обратно совместимый список строк.
+- Классификация: структурные/неисправимые данные (геометрия, индексы, нефинитные transform/цвет, масштаб, тип света, нулевое направление, размер shadow map, неизвестные trigger/action, отсутствующий target, некорректный value) — `blocker`; диапазоны значений, повтор/имена/ресурсы/яркость/ambient и параметры логики — `warning`.
+- `dec_engine/scene_observers.py`: `SceneEventConsumers` кэширует `validation_issues` и производные `validation_problems`.
+- `dec_engine/editor.py`: тест блокируется только по blocker; добавлены `show_validation_report()`, `_select_validation_issue()` (переход к объекту/свету), `_validation_issue_lines()`, кнопка «Проверить карту»; предупреждения не блокируют запуск и показываются в статусе.
+- Добавлены `tests/test_validation.py`: пустая сцена, blocker с контекстом объекта/свойства, warning-имена/цвет, отсутствующий logic target, обратная совместимость `validate_scene`, неизменяемость issue и кэш observers.
+- Проверки: pytest `68 passed, 20 subtests` (+8); Ruff lint/format, Pyright `0 errors`, compileall и smoke-test (`0.1.0 5`) прошли; диагностических `print` нет.
+- Обновлены `PLAN.md` (P1.1 → `PARTIAL`, очередь), `README.md`, `DEVELOPMENT_GUIDE.md` (карта модулей и список тестов).
+- Статус `PARTIAL`: ядро DoD покрыто headless-тестами, но GUI-навигация отчёта требует ручной проверки, MTL-ссылки пока не проверяются, удалённый CI не запускался (push запрещён). Следующий независимый пункт — P1.2 зависит от F0.2/F0.4/P1.1; без P1.1-ручной проверки можно взять P2.1 (полный охват редакторских действий командами) отдельным решением.

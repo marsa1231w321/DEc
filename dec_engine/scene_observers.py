@@ -2,7 +2,7 @@ from collections.abc import Callable
 
 from .events import ResourceChanged, SceneChanged, Subscription
 from .scene import Scene
-from .validation import validate_scene
+from .validation import collect_validation_issues
 
 
 class SceneEventConsumers:
@@ -14,7 +14,10 @@ class SceneEventConsumers:
         self.scene = scene
         self.revision = 0
         self.dirty = False
-        self.validation_problems = tuple(validate_scene(scene))
+        self.validation_issues = tuple(collect_validation_issues(scene))
+        self.validation_problems = tuple(
+            issue.message for issue in self.validation_issues
+        )
         self._on_change = on_change
         self._subscriptions: tuple[
             Subscription[SceneChanged] | Subscription[ResourceChanged], ...
@@ -26,7 +29,10 @@ class SceneEventConsumers:
     def _handle_change(self, _event: SceneChanged | ResourceChanged) -> None:
         self.revision += 1
         self.dirty = True
-        self.validation_problems = tuple(validate_scene(self.scene))
+        self.validation_issues = tuple(collect_validation_issues(self.scene))
+        self.validation_problems = tuple(
+            issue.message for issue in self.validation_issues
+        )
         if self._on_change is not None:
             self._on_change(self.revision, self.validation_problems)
 

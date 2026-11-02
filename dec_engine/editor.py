@@ -326,6 +326,70 @@ class EditorUI:
             summary += f"\n... и ещё {len(problems) - len(visible)} проблем."
         return summary
 
+    @staticmethod
+    def _validation_issue_lines(issues):
+        lines = []
+        for issue in issues:
+            marker = "БЛОКЕР" if issue.is_blocker else "ПРЕДУПРЕЖДЕНИЕ"
+            lines.append(f"[{marker}] {issue.message}")
+        if len(lines) > 20:
+            lines = lines[:20]
+            lines.append(f"... и ещё {len(issues) - 20} проблем.")
+        return lines
+
+    def _select_validation_issue(self, issue):
+        target = issue.object_id
+        if target is None:
+            return False
+        for index, obj in enumerate(self.scene.objects):
+            if obj.id == target:
+                self._refresh_objects(select=index)
+                self.object_list.see(index)
+                return True
+        for index, light in enumerate(self.scene.lights):
+            if light.id == target:
+                self._refresh_lights(select=index)
+                self.light_list.see(index)
+                return True
+        return False
+
+    def show_validation_report(self, issues):
+        if not issues:
+            messagebox.showinfo(
+                "Проверка карты", "Проблем не найдено.", parent=self.root
+            )
+            return
+        report = tk.Toplevel(self.root)
+        report.title("Проверка карты")
+        report.transient(self.root)
+        tk.Label(
+            report,
+            text="Выберите проблему, чтобы перейти к объекту:",
+            anchor="w",
+        ).pack(fill="x", padx=8, pady=(8, 4))
+        listing = tk.Listbox(
+            report, width=90, height=min(16, max(4, len(issues))), exportselection=False
+        )
+        listing.pack(fill="both", expand=True, padx=8)
+        for line in self._validation_issue_lines(issues):
+            listing.insert(tk.END, line)
+
+        def jump(_event=None):
+            selection = listing.curselection()
+            if selection:
+                self._select_validation_issue(issues[selection[0]])
+                report.lift()
+
+        listing.bind("<Double-Button-1>", jump)
+        buttons = tk.Frame(report)
+        buttons.pack(fill="x", padx=8, pady=8)
+        tk.Button(buttons, text="Перейти к объекту", command=jump).pack(side="left")
+        tk.Button(buttons, text="Закрыть", command=report.destroy).pack(side="right")
+
+    def review_validation(self):
+        issues = self._scene_event_consumers.validation_issues
+        self.show_validation_report(issues)
+
     def _refresh_history_buttons(self):
         if not hasattr(self, "undo_button") or not hasattr(self, "command_stack"):
             return
@@ -613,6 +677,7 @@ class EditorUI:
             ("Новая карта", self.new_project),
             ("Открыть", self.open_project),
             ("Сохранить", self.save_current_project),
+            ("Проверить карту", self.review_validation),
             ("Играть / Стоп", self.toggle_playtest),
         ):
             button = ttk.Button(toolbar, text=label, command=command)
@@ -3325,27 +3390,33 @@ class EditorUI:
         self._draw_grid()
 
     def toggle_playtest(self):
+        warning_count = 0
         if not self.playtest_active:
-            problems = self._scene_event_consumers.validation_problems
-            if problems:
-                messagebox.showerror(
-                    "Проверка карты не пройдена",
-                    self._validation_summary(problems),
-                    parent=self.root,
+            issues = self._scene_event_consumers.validation_issues
+            blockers = [issue for issue in issues if issue.is_blocker]
+            if blockers:
+                self.show_validation_report(blockers)
+                self.status.set(
+                    f"Тест не запущен: блокирующих проблем — {len(blockers)}."
                 )
-                self.status.set(f"Тест не запущен: найдено проблем — {len(problems)}.")
                 return
+            warning_count = len(issues)
         self.playtest_active = not self.playtest_active
         self.timeline_playing = False
         self.play_button.configure(text="Воспроизвести")
         self.playtest_button.configure(
             text="Остановить" if self.playtest_active else "Играть / Стоп"
         )
-        self.status.set(
-            "Тест запущен: WASD — движение, мышь — обзор, Space — прыжок, Esc — выход."
-            if self.playtest_active
-            else "Тест остановлен."
-        )
+        if self.playtest_active:
+            suffix = (
+                f" Предупреждений карты: {warning_count}." if warning_count else ""
+            )
+            self.status.set(
+                "Тест запущен: WASD — движение, мышь — обзор, Space — прыжок, "
+                f"Esc — выход.{suffix}"
+            )
+        else:
+            self.status.set("Тест остановлен.")
 
     def import_model(self):
         path = filedialog.askopenfilename(
