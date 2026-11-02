@@ -232,3 +232,11 @@ P2.5 — материалы, submesh и формат v7 (PARTIAL)
 - Обновлены `PLAN.md` (P2.5 → `PARTIAL`, очередь), `README.md`, `DEVELOPMENT_GUIDE.md` (строка материалов, версии 1–7 и список тестов).
 - Статус `PARTIAL`: DoD по submesh-материалам и отчёту о потерях выполнен и покрыт headless-тестами; применение PBR-карт в `renderer.py`, раздельное сохранение карт submesh и ручная GUI-проверка остаются.
 
+P2.7 — сетка, кадрирование и рамочное выделение (PARTIAL)
+---------------------------------------------------------
+- Создан `dec_engine/editor_nav.py` без Tk/GLFW/OpenGL: `adaptive_grid_step()` (степень двойки, отношение 10–20), `grid_label_positions()` с лимитом подписей, `scene_bounds()` и `frame_distance()`, `normalized_rect()`/`point_in_rect()`, `project_points()` с отсечением точек за камерой, `nodes_in_screen_rect()` по вершинам мешей, `cull_world_objects()` по расстоянию и `zoom_towards()`.
+- Добавлены `tests/test_editor_nav.py` (24 проверки): адаптивный шаг и клампы, подписи и лимит, границы/радиус сцены и кадрирование, прямоугольник и точка, проекция (включая точку за камерой), рамочное выделение, culling и зум.
+- Проверки: pytest `155 passed, 26 subtests`; Ruff lint/format, Pyright `0 errors`, compileall и smoke-test прошли.
+- Обновлены `PLAN.md` (P2.7 → `PARTIAL`, очередь), `README.md`, `DEVELOPMENT_GUIDE.md` (строка editor_nav и список тестов).
+- Статус `PARTIAL`: DoD по headless-части выполнен и покрыт тестами; подключение к `editor.py`/`renderer.py`, проверка рамки выделения в 2D/3D и профилирование большой карты требуют ручной GUI-проверки.
+
