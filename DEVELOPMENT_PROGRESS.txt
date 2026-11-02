@@ -259,3 +259,15 @@ Fatal PyEval_RestoreThread в glfw.poll_events — исправлено (pyGLFW/
 - Обновлены `PLAN.md` (bug-class → FIXED workaround, остаток ручной Snap-check), `README.md`, `DEVELOPMENT_GUIDE.md`.
 - Остаток: ручная проверка Windows 10 Snap/maximize/resize; при возврате прямого `glfw.poll_events` регрессия вернётся.
 
+CI run 41385930558 зелёный — статусы, ожидавшие CI, переоткрыты/закрыты
+------------------------------------------------------------------
+- После `git push origin main` GitHub Actions run 41385930558 для commit `b31ed6b` завершился `success`; job'ы `checks (3.10)` и `checks (3.15)` — success.
+- F0.2 Command API → `DONE` (CI подтвердил undo/redo, транзакции и command-history save/load).
+- F0.6 Логирование → `DONE` (структурированные dev-логи, нет диагностических `print`).
+- F0.8 Зависимости → `DONE` (матрица Python 3.10/3.15 и locked install).
+- P1.3 Тесты формата → `DONE` (golden-пак, битые архивы, отсутствующие зависимости).
+- P1.1 Валидация → `PARTIAL` без CI-остатка: остаются ручная GUI-проверка отчёта и MTL-проверка.
+- F0.7 Host-window → `PARTIAL`: CI зелёный, остаётся ручной Windows GUI smoke (включая новый Win32 event pump).
+- Обновлены `PLAN.md` (статусы, очередь, верхняя сводка, версии 1→7), `README.md` (CI run, статусы F0.x/P1.x, ограничения).
+- P2.2/P2.3/P2.5/P2.7 остаются `PARTIAL` по GUI/рендер-остаткам, не по CI.
+

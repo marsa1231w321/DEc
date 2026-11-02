@@ -1,6 +1,6 @@
 # DEc — обязательный план выполнения
 
-Этот документ — обязательный roadmap проекта, предоставленный владельцем проекта и дополненный текущими статусами. Читать целиком до начала работы. Порядок фаз задаёт порядок исполнения; внутри фазы параллелить только независимые задачи. Фаза не закрыта, пока DoD всех задач не выполнены и CI не зелёный. GitHub Actions run 41374289046 для `main` успешен; Фаза 0 остаётся открытой до F0.2, F0.6–F0.8.
+Этот документ — обязательный roadmap проекта, предоставленный владельцем проекта и дополненный текущими статусами. Читать целиком до начала работы. Порядок фаз задаёт порядок исполнения; внутри фазы параллелить только независимые задачи. Фаза не закрыта, пока DoD всех задач не выполнены и CI не зелёный. GitHub Actions run 41385930558 для `main` успешен (Python 3.10/3.15); Фаза 0 закрыта по F0.2/F0.6/F0.8, F0.7 ждёт ручного Windows GUI smoke.
 
 **Срез статусов:** 2026-11-02. Статусы отражают рабочую копию на дату записи, а не утверждение о полном соответствии DoD. Ранее сделанные прототипные функции отмечены как `PARTIAL`, пока не выполнен весь контракт задачи.
 
@@ -48,12 +48,12 @@
 
 ### F0.2 — Командная модель
 
-- **Статус:** `PARTIAL`; DoD реализован и локально проверен, ожидается CI для этой ревизии перед закрытием статуса.
+- **Статус:** `DONE`; DoD реализован, локальные проверки и CI run 41385930558 (Python 3.10/3.15) успешны.
 - **Pre:** F0.1, F0.3, F0.4 (для сериализуемого журнала команд).
 - **Задача:** `Command` API с `do/undo`, единый стек и транзакции (несколько команд — один undo-шаг); автосейв поддерживает сериализацию/восстановление команд, если это нужно выбранной модели.
 - **DoD:** команды покрывают преобразования, свойства, добавление/удаление и логику; тест «undo после save/load».
 - **Risk:** если построить команды до event bus, команды придётся переписывать.
-- **Контекст:** `dec_engine/commands.py` содержит property/add/remove/transaction commands и единый `CommandStack`. UI-адаптер хранит diff-команды вместо полных scene snapshots; `.DE` сохраняет undo/redo records в additive `command_history`, что покрыто undo-after-save/load-тестами. Capture для legacy UI-обработчиков временно строит before/after сериализованные состояния для расчёта минимального patch; сами снимки не хранятся в истории. Headless-тесты и локальные Ruff/Pyright/smoke-проверки проходят; удалённый CI ещё не запускался на этой ревизии.
+- **Контекст:** `dec_engine/commands.py` содержит property/add/remove/transaction commands и единый `CommandStack`. UI-адаптер хранит diff-команды вместо полных scene snapshots; `.DE` сохраняет undo/redo records в additive `command_history`, что покрыто undo-after-save/load-тестами. Capture для legacy UI-обработчиков временно строит before/after сериализованные состояния для расчёта минимального patch; сами снимки не хранятся в истории. Headless-тесты и локальные Ruff/Pyright/smoke-проверки проходят; CI run 41385930558 на Python 3.10/3.15 успешен.
 
 ### F0.3 — Событийная шина
 
@@ -84,16 +84,16 @@
 
 ### F0.6 — Логирование
 
-- **Статус:** `PARTIAL`; структурированное dev-логирование подключено и проверяется локально, ожидается CI для этой ревизии.
+- **Статус:** `DONE`; структурированное dev-логирование подключено, локальные проверки и CI run 41385930558 успешны.
 - **Pre:** нет.
 - **Задача:** структурированные уровни и контекст (объект, файл, операция); раздельные dev-логи и пользовательские сообщения/отчёты (связано с P1.4).
 - **DoD:** в прикладном коде нет диагностических `print`; уровни конфигурируются.
 - **Risk:** пользовательский отчёт не должен раскрывать секреты или внутренний контекст dev-лога.
-- **Контекст:** `dec_engine/logging_config.py` формирует JSON-события с UTC timestamp, level и scalar-контекстом; уровень задаётся `DEC_LOG_LEVEL` или `--log-level`. В журнал идут только stderr/dev-события для startup, model import и project save/load; ошибки и статус редактора остаются в пользовательском UI, журналы в UI/отчёт автоматически не копируются. Диагностических `print` в `dec_engine` нет.
+- **Контекст:** `dec_engine/logging_config.py` формирует JSON-события с UTC timestamp, level и scalar-контекстом; уровень задаётся `DEC_LOG_LEVEL` или `--log-level`. В журнал идут только stderr/dev-события для startup, model import и project save/load; ошибки и статус редактора остаются в пользовательском UI, журналы в UI/отчёт автоматически не копируются. Диагностических `print` в `dec_engine` нет; CI run 41385930558 (3.10/3.15) успешен.
 
 ### F0.7 — Абстракция host-window
 
-- **Статус:** `PARTIAL`; protocol и Win32/detached реализации добавлены, проходят headless-проверки; требуется полный CI и ручной Windows GUI smoke.
+- **Статус:** `PARTIAL`; protocol и Win32/detached реализации добавлены, headless-проверки и CI run 41385930558 успешны; остаётся ручной Windows GUI smoke (включая проверку нового Win32 event pump).
 - **Pre:** нет.
 - **Задача:** интерфейс `HostWindowBackend`, Win32 backend по умолчанию, место для SDL2/Qt backend.
 - **DoD:** интерфейс зафиксирован; вне Windows viewport может открываться отдельно без правок рендера.
@@ -102,12 +102,12 @@
 
 ### F0.8 — Фиксация зависимостей
 
-- **Статус:** `PARTIAL`; clean locked installs and checks pass on Python 3.14/3.15; 3.10 CI for this revision is pending.
+- **Статус:** `DONE`; clean locked installs и CI run 41385930558 на Python 3.10/3.15 успешны.
 - **Pre:** нет.
 - **Задача:** lockfile, фиксация версий Python и библиотек, политика обновлений.
 - **DoD:** чистая машина воспроизводит установку и запуск.
 - **Risk:** без pinning нельзя сопоставлять CI и пользовательские ошибки.
-- **Контекст:** `pyproject.toml` defines supported Python `>=3.10,<3.16` and project/dev dependencies; `uv.lock` resolves all supported Python branches and platforms. `.python-version` pins the developer default to 3.15.0. `requirements.txt`/`requirements-dev.txt` are hash-pinned exports; CI uses pinned uv 0.13.6 and `uv sync --locked`. Export commands: `uv export --locked --format requirements.txt --no-dev --no-emit-project -o requirements.txt` and `uv export --locked --format requirements.txt --group dev --no-emit-project -o requirements-dev.txt`. Isolated install, tests and checks pass on Python 3.14.6/3.15.0; this machine has no Python 3.10 runtime, so the 3.10 matrix and CI for this revision remain pending.
+- **Контекст:** `pyproject.toml` defines supported Python `>=3.10,<3.16` and project/dev dependencies; `uv.lock` resolves all supported Python branches and platforms. `.python-version` pins the developer default to 3.15.0. `requirements.txt`/`requirements-dev.txt` are hash-pinned exports; CI uses pinned uv 0.13.6 and `uv sync --locked`. Export commands: `uv export --locked --format requirements.txt --no-dev --no-emit-project -o requirements.txt` and `uv export --locked --format requirements.txt --group dev --no-emit-project -o requirements-dev.txt`. Isolated install, tests and checks pass on Python 3.14.6/3.15.0; CI run 41385930558 подтвердил успешную матрицу Python 3.10/3.15 для этой ревизии.
 
 ## Bug-class — Windows 10 Snap resize завершает процесс
 
@@ -126,12 +126,12 @@
 
 ### P1.1 — Валидация карты
 
-- **Статус:** `PARTIAL`; ядро DoD реализовано и покрыто headless-тестами, требуется ручная проверка GUI-отчёта навигации и удалённый CI на этой ревизии.
+- **Статус:** `PARTIAL`; ядро DoD реализовано, покрыто headless-тестами, CI run 41385930558 успешен; остаются ручная проверка GUI-отчёта и MTL-проверка.
 - **Pre:** F0.1, F0.3 (закрыты).
 - **Задача:** проверять отсутствующие ресурсы, некорректные значения, пустую геометрию, битые ссылки логики, дублирующиеся имена и ошибочные MTL-ссылки. Каждая проблема указывает объект и свойство.
 - **DoD:** явные уровни blocker/warning; blocker блокирует тест; отчёт позволяет перейти к объекту.
 - **Risk:** без классификации recovery/автосейв будет без разбора сохранять некорректные сцены.
-- **Контекст:** `dec_engine/validation.py` вводит `ValidationIssue` (`severity` = `blocker`/`warning`, `object_id`, `object_name`, `property_name`/`property`), `collect_validation_issues()`, `blocking_issues()`, `has_blockers()`; `validate_scene()` сохранён как обратно совместимый список строк. `SceneEventConsumers` кэширует и `validation_issues`, и `validation_problems`. Редактор блокирует тест только по blocker, показывает навигационный отчёт с переходом к объекту/свету и имеет кнопку «Проверить карту»; предупреждения не блокируют тест. Покрыто `tests/test_validation.py` (уровни, контекст объекта/свойства, блокировка, обратная совместимость, observers). Остаток: ручная проверка Tk-отчёта, проверка MTL-ссылок и удалённый CI.
+- **Контекст:** `dec_engine/validation.py` вводит `ValidationIssue` (`severity` = `blocker`/`warning`, `object_id`, `object_name`, `property_name`/`property`), `collect_validation_issues()`, `blocking_issues()`, `has_blockers()`; `validate_scene()` сохранён как обратно совместимый список строк. `SceneEventConsumers` кэширует и `validation_issues`, и `validation_problems`. Редактор блокирует тест только по blocker, показывает навигационный отчёт с переходом к объекту/свету и имеет кнопку «Проверить карту»; предупреждения не блокируют тест. Покрыто `tests/test_validation.py` (уровни, контекст объекта/свойства, блокировка, обратная совместимость, observers). Остаток: ручная проверка Tk-отчёта и проверка MTL-ссылок; CI run 41385930558 успешен.
 
 ### P1.2 — Автосохранение и восстановление
 
@@ -144,12 +144,12 @@
 
 ### P1.3 — Тесты формата и миграций
 
-- **Статус:** `PARTIAL`; DoD выполнен и подтверждён локальными headless-тестами, удалённый CI для этой ревизии ещё не запускался.
+- **Статус:** `DONE`; DoD выполнен, локальные headless-тесты и CI run 41385930558 успешны.
 - **Pre:** F0.4 (закрыт).
 - **Задача:** golden-карты и пакеты; проверки старых версий, битых архивов и отсутствующих зависимостей.
 - **DoD:** каждый BREAKING-переход имеет миграционный тест; повреждённый архив даёт понятную ошибку.
 - **Risk:** без golden-файлов миграции останутся ручными и будут регрессировать.
-- **Контекст:** F0.4 уже покрывает карты v1–v5. P1.3 добавил golden asset pack `tests/fixtures/packs/golden_v1.DE` (формат `DEcAssetPack` v1) и headless-набор `tests/test_archive_robustness.py`: list/extract golden-пакета, отказ на не-ZIP архив для `load_project`/`list_asset_pack`/`extract_asset`, битый `scene.json`, отсутствующие `meshes/*.npz`, `assets/textures/*` и `assets/sounds/*` в карте, а также отсутствующий asset из манифеста пака. Для понятных ошибок `project.py` и `asset_pack.py` перехватывают `zipfile.BadZipFile`, `json.JSONDecodeError` и `KeyError` и поднимают `ValueError`. Новых BREAKING-переходов нет, все версии 1→6 покрыты. Локально: pytest `60 passed, 20 subtests`, Ruff, Pyright, compileall и smoke-тест прошли; остаётся только удалённый CI.
+- **Контекст:** F0.4 уже покрывает карты v1–v5. P1.3 добавил golden asset pack `tests/fixtures/packs/golden_v1.DE` (формат `DEcAssetPack` v1) и headless-набор `tests/test_archive_robustness.py`: list/extract golden-пакета, отказ на не-ZIP архив для `load_project`/`list_asset_pack`/`extract_asset`, битый `scene.json`, отсутствующие `meshes/*.npz`, `assets/textures/*` и `assets/sounds/*` в карте, а также отсутствующий asset из манифеста пака. Для понятных ошибок `project.py` и `asset_pack.py` перехватывают `zipfile.BadZipFile`, `json.JSONDecodeError` и `KeyError` и поднимают `ValueError`. Новых BREAKING-переходов нет, версии 1→7 покрыты. Локально: pytest `161 passed, 26 subtests`, Ruff, Pyright, compileall и smoke-тест прошли; CI run 41385930558 (3.10/3.15) успешен.
 
 ### P1.4 — Пользовательский журнал ошибок
 
@@ -513,13 +513,13 @@
 
 ## Текущая очередь
 
-1. **F0.2 Command API — PARTIAL.** Выполнены команды, транзакции, diff-based UI history и command-history save/load; закончить полный набор тестов, статические проверки и ревью.
+1. **F0.2 Command API — DONE.** Команды, транзакции, diff-based UI history и command-history save/load; CI run 41385930558 зелёный.
 2. **F0.3 Event Bus — DONE.** Dirty/autosave и validation consumers активны на scene/resource events; headless tests пройдены.
-3. **F0.4 Format migrations — DONE.** Golden maps v1–v5 загружаются; известная legacy lighting conversion и error cases покрыты.
-4. **F0.5 CI/headless — DONE.** Подтверждён GitHub Actions run 41374289046.
+3. **F0.4 Format migrations — DONE.** Golden maps v1–v6 загружаются (формат v7); legacy lighting conversion и error cases покрыты.
+4. **F0.5 CI/headless — DONE.** Подтверждён GitHub Actions run 41385930558 (3.10/3.15); предыдущий run 41374289046 также успешен.
 5. **F0.1 Scene Graph — DONE.** Headless DoD включён в успешный Actions run.
-6. **P1.3 Тесты формата — PARTIAL.** Golden asset pack, битые архивы и отсутствующие зависимости покрыты headless-тестами; остаётся удалённый CI.
-7. **P1.1 Валидация карты — PARTIAL.** Уровни blocker/warning, контекст объекта/свойства, блокировка теста и навигационный отчёт реализованы; остаются ручная GUI-проверка, MTL-проверка и удалённый CI.
+6. **P1.3 Тесты формата — DONE.** Golden asset pack, битые архивы и отсутствующие зависимости покрыты headless-тестами; CI зелёный.
+7. **P1.1 Валидация карты — PARTIAL.** Уровни blocker/warning, контекст объекта/свойства, блокировка теста и навигационный отчёт реализованы; CI зелёный; остаются ручная GUI-проверка и MTL-проверка.
 8. **P2.3 Слои, иерархия и поиск — PARTIAL.** `Scene.search_nodes()` и `Scene.rename_node()` готовы и покрыты headless-тестами; GUI-дерево, папки, массовое редактирование и lock/visibility остаются.
 9. **P2.2 Гизмо — PARTIAL.** `dec_engine/gizmo.py` (оси, snapping, pivots, измерения, геометрия) готов и покрыт тестами; отрисовка и drag в 2D/3D требуют ручной GUI-проверки.
 10. **P2.5 Материалы — PARTIAL.** `Material`, submesh-назначение и сериализация v7 готовы и покрыты headless-тестами; PBR-карты в рендере и ручная GUI-проверка остаются.
