@@ -475,6 +475,71 @@ class Scene:
         )
         return updated
 
+    def rename_node(self, node: SceneNode | str, new_name: str) -> SceneNode:
+        """Переименовать узел и синхронизировать ссылки логики/анимации."""
+
+        target = self.graph.get_node(node)
+        if target is None:
+            raise KeyError(f"Scene node does not exist: {node!r}")
+        name = str(new_name)
+        if not name.strip():
+            raise ValueError("Scene node name cannot be empty.")
+        if name == target.name:
+            return target
+        previous_name = target.name
+        target.name = name
+        self._sync_name_references(previous_name, name)
+        self.events.publish(
+            SceneChanged(
+                operation="updated",
+                node_id=target.id,
+                node_kind=type(target).__name__,
+                parent_id=target.parent_id,
+                fields=("name",),
+            )
+        )
+        return target
+
+    def _sync_name_references(self, previous_name: str, new_name: str) -> None:
+        if not previous_name or previous_name == new_name:
+            return
+        for rule in self.logic_actions:
+            if isinstance(rule, dict) and rule.get("target") == previous_name:
+                rule["target"] = new_name
+        for track in self.animation_tracks:
+            if not isinstance(track, dict):
+                continue
+            if (
+                track.get("target_type") == "object"
+                and track.get("target") == previous_name
+            ):
+                track["target"] = new_name
+            elif track.get("target_type") == "bone" and str(
+                track.get("target", "")
+            ).startswith(f"{previous_name}::"):
+                track["target"] = (
+                    f"{new_name}::{str(track['target']).split('::', 1)[1]}"
+                )
+
+    def search_nodes(
+        self,
+        text: str = "",
+        *,
+        node_type=None,
+        tag: str | None = None,
+        group: str | None = None,
+        layer: str | None = None,
+    ) -> tuple[SceneNode, ...]:
+        """Поиск узлов по подстроке имени с фильтрами графа."""
+
+        needle = str(text).strip().lower()
+        matches = self.graph.query(
+            node_type=node_type, tag=tag, group=group, layer=layer
+        )
+        if not needle:
+            return matches
+        return tuple(node for node in matches if needle in node.name.lower())
+
     def notify_changed(self, *fields: str) -> None:
         self.events.publish(
             SceneChanged(

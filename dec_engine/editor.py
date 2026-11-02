@@ -3056,8 +3056,8 @@ class EditorUI:
                 )
             if any(channel < 0 or channel > 1 for channel in color):
                 raise ValueError("Значения каналов цвета должны быть от 0 до 1.")
-            old_name = obj.name
-            obj.name = self._unique_name(name, ignored_index=index)
+            new_name = self._unique_name(name, ignored_index=index)
+            self.scene.rename_node(obj, new_name)
             obj.position = position
             obj.rotation = tuple(
                 value * 3.141592653589793 / 180.0 for value in rotation
@@ -3076,21 +3076,6 @@ class EditorUI:
                     if self.npc_behavior.get() == "Следовать за игроком"
                     else "idle"
                 )
-            for node in self.scene.logic_actions:
-                if node.get("target") == old_name:
-                    node["target"] = obj.name
-            for track in self.scene.animation_tracks:
-                if (
-                    track.get("target_type") == "object"
-                    and track.get("target") == old_name
-                ):
-                    track["target"] = obj.name
-                elif track.get("target_type") == "bone" and str(
-                    track.get("target", "")
-                ).startswith(f"{old_name}::"):
-                    track["target"] = (
-                        f"{obj.name}::{str(track['target']).split('::', 1)[1]}"
-                    )
             self._refresh_objects(select=index)
             for axis, value in zip(("X", "Y", "Z"), rotation):
                 self.object_axis_controls[axis].set(f"{value:.2f}")
@@ -3098,7 +3083,7 @@ class EditorUI:
                 self.object_size_controls[axis].set(f"{value:.3f}")
             self._update_color_swatch(self.object_color_swatch, color)
             self._refresh_logic()
-            self.status.set(f"Объект обновлён: {name}")
+            self.status.set(f"Объект обновлён: {obj.name}")
         except ValueError as error:
             messagebox.showerror(
                 "Некорректные параметры объекта", str(error), parent=self.root

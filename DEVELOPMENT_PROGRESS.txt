@@ -199,3 +199,14 @@ P1.1 — валидация карты: уровни и навигация (PART
 - Проверки: pytest `68 passed, 20 subtests` (+8); Ruff lint/format, Pyright `0 errors`, compileall и smoke-test (`0.1.0 5`) прошли; диагностических `print` нет.
 - Обновлены `PLAN.md` (P1.1 → `PARTIAL`, очередь), `README.md`, `DEVELOPMENT_GUIDE.md` (карта модулей и список тестов).
 - Статус `PARTIAL`: ядро DoD покрыто headless-тестами, но GUI-навигация отчёта требует ручной проверки, MTL-ссылки пока не проверяются, удалённый CI не запускался (push запрещён). Следующий независимый пункт — P1.2 зависит от F0.2/F0.4/P1.1; без P1.1-ручной проверки можно взять P2.1 (полный охват редакторских действий командами) отдельным решением.
+P2.3 — слои, иерархия и поиск: data-layer (PARTIAL)
+-----------------------------------------------
+- `dec_engine/scene.py`: добавлены `Scene.rename_node(node, new_name)` и `Scene.search_nodes(text, node_type/tag/group/layer)`.
+- `rename_node()` валидирует непустое имя, возвращает узел без изменений при совпадении, синхронизирует `logic_actions[*].target`, анимационные дорожки `target_type="object"` и `bone`-цели вида `name::bone`, затем публикует `SceneChanged(operation="updated", fields=("name",))`. Приватный `_sync_name_references()` инкапсулирует обновление ссылок.
+- `search_nodes()` — регистронезависимый поиск по подстроке имени поверх `SceneGraph.query()` с фильтрами `node_type`, `tag`, `group`, `layer`; пустой запрос возвращает все узлы, соответствующие фильтрам.
+- `dec_engine/editor.py`: обработчик `apply_object` больше не дублирует ручные циклы по логике и анимации — переименование идёт через `Scene.rename_node()`.
+- Добавлены `tests/test_scene_search.py` (7 проверок): пустой/частичный запрос, регистронезависимость, фильтры по типу/тегу/группе/слою, переименование с обновлением logic/animation object/bone целей, отказ на пустое имя и `KeyError` на отсутствующий узел, публикация `SceneChanged`.
+- Проверки: pytest `75 passed, 20 subtests` (+7); Ruff lint/format, Pyright `0 errors`, compileall и smoke-test (`0.1.0 5`) прошли.
+- Обновлены `PLAN.md` (P2.3 → `PARTIAL`, очередь), `README.md`, `DEVELOPMENT_GUIDE.md` (строка scene.py и список тестов).
+- Статус `PARTIAL`: data-layer DoD «переименование не ломает ссылки» выполнен и покрыт headless-тестами; перетаскивание в дереве, папки, массовое редактирование, lock/visibility UI и ручная GUI-проверка остаются.
+
