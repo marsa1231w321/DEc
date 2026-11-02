@@ -5,6 +5,11 @@ import numpy as np
 import trimesh
 from PIL import Image
 
+from .logging_config import get_logger
+
+
+_logger = get_logger(__name__)
+
 
 @dataclass
 class MeshData:
@@ -20,7 +25,11 @@ class MeshData:
 class ModelLoader:
     @staticmethod
     def supported_formats() -> tuple[str, ...]:
-        return tuple(sorted(f".{extension}" for extension in trimesh.exchange.load.mesh_formats()))
+        return tuple(
+            sorted(
+                f".{extension}" for extension in trimesh.exchange.load.mesh_formats()
+            )
+        )
 
     @staticmethod
     def detect_format(path: str) -> str:
@@ -36,7 +45,7 @@ class ModelLoader:
                 f"Formats available in this installation: {supported}"
             )
 
-        loaded = trimesh.load(path, force='scene')
+        loaded = trimesh.load(path, force="scene")
         if isinstance(loaded, trimesh.Scene):
             if len(loaded.geometry) == 0:
                 raise ValueError(f"Scene is empty: {path}")
@@ -94,10 +103,22 @@ class ModelLoader:
                 if texture_image is not None:
                     imported_color = np.ones(3, dtype=np.float32)
                 color = tuple(float(channel) for channel in imported_color)
-            return MeshData(
-                os.path.basename(path), vertices, normals, uvs, indices,
-                tuple(color), texture_image,
+            result = MeshData(
+                os.path.basename(path),
+                vertices,
+                normals,
+                uvs,
+                indices,
+                tuple(color),
+                texture_image,
             )
+            _logger.bind(
+                operation="model_import",
+                file=os.path.basename(path),
+                vertex_count=len(vertices),
+                face_count=len(faces),
+            ).info("Model imported")
+            return result
 
         raise TypeError(f"Unsupported trimesh payload for {path}: {type(mesh)!r}")
 

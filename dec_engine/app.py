@@ -19,6 +19,10 @@ from .input_state import (
     mouse_button_down,
     poll_viewport_input,
 )
+from .logging_config import configure_logging, get_logger
+
+
+_logger = get_logger(__name__)
 
 
 def make_box(size=1.0, color=(0.8, 0.45, 0.28), position=(0.0, 0.0, 0.0)):
@@ -328,13 +332,28 @@ def run_app(model_path=None):
 def main():
     parser = argparse.ArgumentParser(description="DEc 3D engine and level editor")
     parser.add_argument(
+        "--log-level",
+        choices=("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"),
+        default=None,
+        help="Developer log level (overrides DEC_LOG_LEVEL)",
+    )
+    parser.add_argument(
         "--model",
         type=str,
         default=None,
         help="Path to a model file supported by trimesh",
     )
     args = parser.parse_args()
+    configure_logging(args.log_level)
+    _logger.info(
+        "DEc editor started",
+        extra={"dec_context": {"operation": "startup"}},
+    )
     run_app(model_path=args.model)
+    _logger.info(
+        "DEc editor stopped",
+        extra={"dec_context": {"operation": "shutdown"}},
+    )
 
 
 if __name__ == "__main__":

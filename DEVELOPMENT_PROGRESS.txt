@@ -152,3 +152,11 @@ F0.2 — Command API (PARTIAL)
 - UI history перенесена с хранимых pickle snapshots на сериализованные scene-diff commands; `.DE` сохраняет bounded undo/redo records в optional `command_history`. Для переходных legacy UI handlers before/after states временно сериализуются только в оперативной памяти для построения diff.
 - Добавлены headless-тесты операций transform/property/add/remove/logic, атомарного rollback транзакции, сериализации массивов и undo/redo после save/load.
 - Проверки этой ревизии: pytest `44 passed, 20 subtests`; Ruff lint и format, Pyright, compileall и smoke test прошли. GitHub Actions ещё не проверял эту ревизию; поэтому статус оставлен `PARTIAL`. Следующий разрешённый пункт — независимая F0.6. Git push запрещён владельцем и не выполнялся.
+- Локальный коммит F0.2 создан: `f558b5a` (`feat: add serializable command undo history`).
+
+F0.6 — структурированные dev-журналы (PARTIAL)
+---------------------------------------------
+- Начат `dec_engine/logging_config.py`: JSON в stderr с UTC timestamp, уровнем и scalar-контекстом; настройка через `DEC_LOG_LEVEL`/`--log-level`.
+- Подключены startup/shutdown, model import и project save/load; пользовательские статусы и сообщения не перенаправляются в журнал.
+- Диагностических `print` в `dec_engine` нет; `debug_render_test.py` и `smoke_test.py` сохраняют ручной/тестовый вывод.
+- Headless-тесты настройки уровня, JSON-контекста и валидации контекста добавлены. Проверки: pytest `48 passed, 20 subtests`; Ruff lint/format, Pyright, compileall, smoke-test и Pylance diagnostics для `app.py`/`logging_config.py` прошли. Проверка не нашла `print` в `dec_engine`; удалённый CI на этой ревизии не запускался, поэтому статус остаётся `PARTIAL`.

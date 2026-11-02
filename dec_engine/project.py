@@ -9,7 +9,11 @@ from uuid import uuid4
 
 import numpy as np
 
+from .logging_config import get_logger
 from .scene import Light, MeshInstance, Scene, TransformNode
+
+
+_logger = get_logger(__name__)
 
 _PROJECT_ASSET_CACHE = tempfile.TemporaryDirectory(prefix="dec-project-assets-")
 CURRENT_PROJECT_FORMAT_VERSION = 6
@@ -304,6 +308,12 @@ def save_project(path, scene: Scene) -> None:
             "scene.json",
             json.dumps(manifest, indent=2, ensure_ascii=True),
         )
+    _logger.bind(
+        operation="project_save",
+        file=os.path.basename(os.fspath(path)),
+        object_count=len(scene.objects),
+        light_count=len(scene.lights),
+    ).info("Project saved")
 
 
 def load_project(path) -> Scene:
@@ -598,9 +608,17 @@ def load_project(path) -> Scene:
             if set(components) - {node.id for node, _ in ordered_nodes}:
                 raise ValueError("Scene graph is missing object or light nodes.")
 
-        scene.command_history = manifest.get("command_history", {"undo": [], "redo": []})
+        scene.command_history = manifest.get(
+            "command_history", {"undo": [], "redo": []}
+        )
         from .commands import CommandStack
 
         CommandStack.from_scene(scene)
 
+    _logger.bind(
+        operation="project_load",
+        file=os.path.basename(os.fspath(path)),
+        object_count=len(scene.objects),
+        light_count=len(scene.lights),
+    ).info("Project loaded")
     return scene
