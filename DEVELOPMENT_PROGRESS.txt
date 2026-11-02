@@ -240,3 +240,11 @@ P2.7 — сетка, кадрирование и рамочное выделен
 - Обновлены `PLAN.md` (P2.7 → `PARTIAL`, очередь), `README.md`, `DEVELOPMENT_GUIDE.md` (строка editor_nav и список тестов).
 - Статус `PARTIAL`: DoD по headless-части выполнен и покрыт тестами; подключение к `editor.py`/`renderer.py`, проверка рамки выделения в 2D/3D и профилирование большой карты требуют ручной GUI-проверки.
 
+P2.2 — drag-сессия гизмо для UI (расширение PARTIAL)
+--------------------------------------------------
+- В `dec_engine/gizmo.py` добавлен `GizmoDragSession`: хранит стартовые position/rotation/scale, нормализованную ось и `GizmoSettings`; `update(amount)` применяет translate/rotate/scale со snapping и возвращает transform + строку `measurement`; `cancel()` возвращает стартовый transform. Валидирует режим, ось и имя оси для scale.
+- В `tests/test_gizmo.py` добавлены 6 проверок сессии: translate/rotate/scale со snapping, cancel и ошибки оси; всего файл содержит 47 проверок.
+- Проверки: pytest `tests/test_gizmo.py` — 47 passed; Ruff и Pyright для изменённых файлов — без ошибок.
+- Обновлены `PLAN.md` (контекст P2.2), `DEVELOPMENT_GUIDE.md` (описание теста гизмо).
+- Статус P2.2 остаётся `PARTIAL`: drag-контракт готов для UI, но отрисовка в `renderer.py`, hit-testing и ручная GUI-проверка остаются.
+

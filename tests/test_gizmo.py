@@ -285,5 +285,81 @@ class GizmoGeometryTests(unittest.TestCase):
             gizmo.gizmo_line_segments(gizmo.TRANSLATE, size=0.0)
 
 
+
+class GizmoDragSessionTests(unittest.TestCase):
+    def _session(self, mode):
+        settings = gizmo.GizmoSettings(mode=mode)
+        return gizmo.GizmoDragSession(
+            start_position=(0.0, 0.0, 0.0),
+            start_rotation=(0.0, 0.0, 0.0),
+            start_scale=(1.0, 1.0, 1.0),
+            axis=(1.0, 0.0, 0.0),
+            axis_name="x",
+            settings=settings,
+            mode=mode,
+        )
+
+    def test_translate_updates_position_with_snapping(self):
+        session = self._session(gizmo.TRANSLATE)
+        transform, readout = session.update(0.37)
+
+        np.testing.assert_allclose(transform["position"], (0.25, 0.0, 0.0))
+        self.assertEqual(transform["rotation"], (0.0, 0.0, 0.0))
+        self.assertEqual(transform["scale_xyz"], (1.0, 1.0, 1.0))
+        self.assertIn("+0.370".replace("0.370", "0.370"), readout)
+
+    def test_rotate_updates_rotation_with_snapping(self):
+        session = self._session(gizmo.ROTATE)
+        session.axis = (0.0, 0.0, 1.0)
+        session.axis_name = "z"
+        transform, readout = session.update(math.radians(17.0))
+
+        np.testing.assert_allclose(
+            gizmo.rotation_matrix(transform["rotation"]),
+            gizmo.rotation_matrix((0.0, 0.0, math.radians(15.0))),
+            atol=1e-9,
+        )
+        self.assertEqual(transform["position"], (0.0, 0.0, 0.0))
+        self.assertIn("°", readout)
+
+    def test_scale_updates_matching_axis_with_snapping(self):
+        session = self._session(gizmo.SCALE)
+        session.axis_name = "y"
+        transform, readout = session.update(1.37)
+
+        np.testing.assert_allclose(transform["scale_xyz"], (1.0, 1.4, 1.0))
+        self.assertEqual(transform["position"], (0.0, 0.0, 0.0))
+        self.assertIn("×1.370", readout)
+
+    def test_cancel_returns_initial_transform(self):
+        session = self._session(gizmo.TRANSLATE)
+        session.update(1.0)
+
+        transform = session.cancel()
+
+        np.testing.assert_allclose(transform["position"], (0.0, 0.0, 0.0))
+        self.assertEqual(transform["scale_xyz"], (1.0, 1.0, 1.0))
+
+    def test_invalid_axis_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "zero-length"):
+            gizmo.GizmoDragSession(
+                start_position=(0.0, 0.0, 0.0),
+                start_rotation=(0.0, 0.0, 0.0),
+                start_scale=(1.0, 1.0, 1.0),
+                axis=(0.0, 0.0, 0.0),
+            )
+
+    def test_invalid_scale_axis_name_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "Unknown scale axis"):
+            gizmo.GizmoDragSession(
+                start_position=(0.0, 0.0, 0.0),
+                start_rotation=(0.0, 0.0, 0.0),
+                start_scale=(1.0, 1.0, 1.0),
+                axis=(1.0, 0.0, 0.0),
+                axis_name="w",
+                settings=gizmo.GizmoSettings(mode=gizmo.SCALE),
+                mode=gizmo.SCALE,
+            )
+
 if __name__ == "__main__":
     unittest.main()

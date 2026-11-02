@@ -303,3 +303,77 @@ def gizmo_line_segments(mode: str = TRANSLATE, size: float = 0.75):
     else:
         raise ValueError(f"Unknown gizmo mode: {mode!r}")
     return tuple(segments)
+
+
+class GizmoDragSession:
+    """Stateful drag helper turning an axis amount into a transform update."""
+
+    def __init__(
+        self,
+        *,
+        start_position,
+        start_rotation,
+        start_scale,
+        axis,
+        axis_name: str = "x",
+        settings: GizmoSettings | None = None,
+        mode: str | None = None,
+    ) -> None:
+        self.settings = settings or GizmoSettings()
+        self.mode = mode or self.settings.mode
+        if self.mode not in GIZMO_MODES:
+            raise ValueError(f"Unknown gizmo mode: {self.mode!r}")
+        self.start_position = tuple(float(value) for value in start_position)
+        self.start_rotation = tuple(float(value) for value in start_rotation)
+        self.start_scale = tuple(float(value) for value in start_scale)
+        vector = np.asarray(axis, dtype=np.float64)
+        if vector.shape != (3,):
+            raise ValueError("axis must be a 3D vector.")
+        length = float(np.linalg.norm(vector))
+        if length < 1e-8:
+            raise ValueError("axis must not be zero-length.")
+        self.axis = tuple(float(value) for value in vector / length)
+        self.axis_name = str(axis_name)
+        if self.mode == SCALE and self.axis_name not in AXIS_NAMES:
+            raise ValueError(f"Unknown scale axis: {self.axis_name!r}")
+
+    def _transform(self, position, rotation, scale_xyz):
+        return {
+            "position": tuple(float(value) for value in position),
+            "rotation": tuple(float(value) for value in rotation),
+            "scale_xyz": tuple(float(value) for value in scale_xyz),
+        }
+
+    def update(self, amount: float):
+        """Return the updated transform and a measurement readout."""
+
+        if self.mode == TRANSLATE:
+            position = translate_position(
+                self.start_position, self.axis, amount, self.settings
+            )
+            return (
+                self._transform(position, self.start_rotation, self.start_scale),
+                measurement(TRANSLATE, amount, self.axis_name),
+            )
+        if self.mode == ROTATE:
+            rotation = rotate_rotation(
+                self.start_rotation, self.axis, amount, self.settings
+            )
+            return (
+                self._transform(self.start_position, rotation, self.start_scale),
+                measurement(ROTATE, amount, self.axis_name),
+            )
+        index = AXIS_NAMES.index(self.axis_name)
+        scale_xyz = scale_axes(self.start_scale, index, amount, self.settings)
+        return (
+            self._transform(self.start_position, self.start_rotation, scale_xyz),
+            measurement(SCALE, amount, self.axis_name),
+        )
+
+    def cancel(self):
+        """Return the untouched starting transform."""
+
+        return self._transform(
+            self.start_position, self.start_rotation, self.start_scale
+        )
+
