@@ -210,3 +210,13 @@ P2.3 — слои, иерархия и поиск: data-layer (PARTIAL)
 - Обновлены `PLAN.md` (P2.3 → `PARTIAL`, очередь), `README.md`, `DEVELOPMENT_GUIDE.md` (строка scene.py и список тестов).
 - Статус `PARTIAL`: data-layer DoD «переименование не ломает ссылки» выполнен и покрыт headless-тестами; перетаскивание в дереве, папки, массовое редактирование, lock/visibility UI и ручная GUI-проверка остаются.
 
+P2.2 — гизмо и преобразования: headless-ядро (PARTIAL)
+-----------------------------------------------------
+- Создан `dec_engine/gizmo.py` без зависимостей от Tk/GLFW/OpenGL: `GizmoSettings` (mode/space/pivot, шаги snapping, cursor, валидация), `rotation_matrix()`/`euler_from_matrix()` в соглашении `scene.py` (`rz @ ry @ rx`), `axis_vectors()` (global/local), `axis_angle_quaternion()`/`quaternion_to_matrix()`, `snap_value()`/`snap_angle()`, `translate_position()`, `rotate_rotation()`, `scale_axes()`, `pivot_point()` (center/individual/cursor), `measurement()`, `snap_to_vertices()` (полная и по оси, порог) и `gizmo_line_segments()` для translate/rotate/scale.
+- `dec_engine/editor.py`: добавлен `self.gizmo_settings = GizmoSettings()`, а два места snapping в 2D-сетке (`_grid_motion`) переведены на общий `snap_value()`; поведение сохранено.
+- `pyproject.toml`: `dec_engine/gizmo.py` добавлен в Pyright include.
+- Добавлены `tests/test_gizmo.py` (41 проверка): настройки и ошибки, матрица поворота/Euler round-trip, global/local оси, snapping значения и угла, translate/rotate/scale со snapping и защитой от нулевого/отрицательного масштаба, pivots center/individual/cursor и ошибки пустого выбора, строки измерений, snapping к вершинам, структура и цвета линий гизмо.
+- Проверки: pytest `116 passed, 20 subtests` (+41); Ruff lint/format, Pyright `0 errors`, compileall и smoke-test (`0.1.0 5`) прошли.
+- Обновлены `PLAN.md` (P2.2 → `PARTIAL`, очередь), `README.md`, `DEVELOPMENT_GUIDE.md` (строка gizmo.py и список тестов).
+- Статус `PARTIAL`: DoD «настраиваемый snapping» и «точный ввод» покрыты, но 2D/3D-визуализация гизмо в `renderer.py`, drag/hit-testing и симметрия требуют ручной GUI-проверки. Следующий независимый пункт — P2.7 (расширения сетки) или P2.5 (материалы).
+

@@ -174,11 +174,12 @@
 
 ### P2.2 — Гизмо и преобразования
 
-- **Статус:** `TODO`
-- **Pre:** F0.1.
+- **Статус:** `PARTIAL`; headless-математика гизмо, snapping, pivots, измерения и генерация геометрии готовы и покрыты тестами, но 2D/3D-визуализация и drag-взаимодействие требуют ручной GUI-проверки.
+- **Pre:** F0.1 (закрыт).
 - **Задача:** translate/rotate/scale gizmo в 3D и 2D; локальные/глобальные оси; ввод чисел; snapping по шагу, углу, размеру; pivots center/individual/cursor; симметрия, измерения, snapping к вершинам.
 - **DoD:** гизмо в 2D и 3D; настраиваемый snapping; точный ввод.
 - **Risk:** локальные/глобальные оси зависят от модели иерархии, поэтому должны учитываться в F0.1.
+- **Контекст:** `dec_engine/gizmo.py` содержит `GizmoSettings` (mode/space/pivot + шаги snapping), `axis_vectors()` (global/local), `translate_position()`, `rotate_rotation()` (axis-angle поверх Euler XYZ), `scale_axes()`, `pivot_point()` (center/individual/cursor), `measurement()`, `snap_to_vertices()` и `gizmo_line_segments()` для 3D-геометрии без GL. `editor.py` хранит `self.gizmo_settings` и использует общий `snap_value()` вместо дублированной математики в 2D-сетке. Pyright include расширен на `dec_engine/gizmo.py`. Покрыто `tests/test_gizmo.py`. Остаток: отрисовка гизмо в `renderer.py`, drag/hit-testing в 2D и 3D, симметрия — требуют ручной GUI-проверки; «точный ввод» уже обеспечен существующими полями объекта.
 
 ### P2.3 — Слои, иерархия и поиск
 
@@ -517,3 +518,4 @@
 6. **P1.3 Тесты формата — PARTIAL.** Golden asset pack, битые архивы и отсутствующие зависимости покрыты headless-тестами; остаётся удалённый CI.
 7. **P1.1 Валидация карты — PARTIAL.** Уровни blocker/warning, контекст объекта/свойства, блокировка теста и навигационный отчёт реализованы; остаются ручная GUI-проверка, MTL-проверка и удалённый CI.
 8. **P2.3 Слои, иерархия и поиск — PARTIAL.** `Scene.search_nodes()` и `Scene.rename_node()` готовы и покрыты headless-тестами; GUI-дерево, папки, массовое редактирование и lock/visibility остаются.
+9. **P2.2 Гизмо — PARTIAL.** `dec_engine/gizmo.py` (оси, snapping, pivots, измерения, геометрия) готов и покрыт тестами; отрисовка и drag в 2D/3D требуют ручной GUI-проверки.

@@ -33,6 +33,7 @@ include = [
     "dec_engine/logic.py",
     "dec_engine/validation.py",
     "dec_engine/playtest.py",
+    "dec_engine/gizmo.py",
     "tests",
 ]
 exclude = [".venv", "**/__pycache__"]

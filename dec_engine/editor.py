@@ -28,6 +28,7 @@ from .asset_pack import (
 from .camera import Camera
 from .commands import CommandStack, build_scene_delta
 from .events import ResourceChanged, SelectionChanged
+from .gizmo import GizmoSettings, snap_value
 from .host_window import HostWindowBackend, create_host_window_backend
 from .loader import load_model
 from .logic import KEY_CODES, LogicRuntime
@@ -94,6 +95,7 @@ class EditorUI:
         self.project_path = None
         self.grid_zoom = 1.0
         self.grid_drag = None
+        self.gizmo_settings = GizmoSettings()
         self.asset_pack_path = None
         self.asset_entries = []
         self.asset_cache = tempfile.TemporaryDirectory(prefix="dec-assets-")
@@ -2732,7 +2734,7 @@ class EditorUI:
                     delta = -delta
                 world_size = max(0.01, original_scale[world_axis] * extent + delta)
                 if self.grid_snap.get():
-                    world_size = max(step, round(world_size / step) * step)
+                    world_size = max(step, snap_value(world_size, step))
                 scale_xyz[world_axis] = world_size / extent
             obj.scale_xyz = tuple(float(value) for value in scale_xyz)
             dimensions = self._object_dimensions(obj)
@@ -2752,7 +2754,7 @@ class EditorUI:
         for plane_axis, world_axis in enumerate(axes):
             value = original[world_axis] + current[plane_axis] - start[plane_axis]
             if self.grid_snap.get():
-                value = round(value / step) * step
+                value = snap_value(value, step)
             position[world_axis] = value
         self.scene.set_world_position(obj, tuple(position))
         if target_type == "object":
