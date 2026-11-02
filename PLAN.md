@@ -102,12 +102,12 @@
 
 ### F0.8 — Фиксация зависимостей
 
-- **Статус:** `TODO`
+- **Статус:** `PARTIAL`; clean locked installs and checks pass on Python 3.14/3.15; 3.10 CI for this revision is pending.
 - **Pre:** нет.
 - **Задача:** lockfile, фиксация версий Python и библиотек, политика обновлений.
 - **DoD:** чистая машина воспроизводит установку и запуск.
 - **Risk:** без pinning нельзя сопоставлять CI и пользовательские ошибки.
-- **Контекст:** `requirements.txt` содержит диапазоны `>=`, а поддерживаемая версия Python не задокументирована; `.venv` в текущей рабочей копии не является lockfile.
+- **Контекст:** `pyproject.toml` defines supported Python `>=3.10,<3.16` and project/dev dependencies; `uv.lock` resolves all supported Python branches and platforms. `.python-version` pins the developer default to 3.15.0. `requirements.txt`/`requirements-dev.txt` are hash-pinned exports; CI uses pinned uv 0.13.6 and `uv sync --locked`. Export commands: `uv export --locked --format requirements.txt --no-dev --no-emit-project -o requirements.txt` and `uv export --locked --format requirements.txt --group dev --no-emit-project -o requirements-dev.txt`. Isolated install, tests and checks pass on Python 3.14.6/3.15.0; this machine has no Python 3.10 runtime, so the 3.10 matrix and CI for this revision remain pending.
 
 ## Bug-class — Windows 10 Snap resize завершает процесс
 

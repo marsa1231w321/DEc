@@ -12,7 +12,7 @@ DEc — ЖУРНАЛ РАБОТ И ПЕРЕДАЧИ
 - Актуально: `Scene.graph` хранит сущности и иерархию; `Scene.objects`/`Scene.lights` — неизменяемые tuple-представления. F0.1 и F0.5 закрыты после успешного GitHub Actions run 41374289046.
 - Undo/redo уже использует `CommandStack` и diff-команды с транзакциями; сохранение/загрузка `.DE` переносит command history. F0.2 локально реализована и проверена, но остаётся `PARTIAL` до CI на этой ревизии.
 - Добавлены конфигурация CI, pytest, Ruff и Pyright, а также headless-регрессии. Удалённый Actions run успешен; branch protection остаётся настройкой GitHub-репозитория вне этих локальных коммитов.
-- F0.3/F0.4 закрыты локальными тестами; F0.2 локально готова, ожидает обновлённый CI. Следующая независимая работа Phase 0 — F0.6.
+- F0.3/F0.4 закрыты локальными тестами; F0.2/F0.6/F0.7/F0.8 реализованы и проверены локально, но остаются `PARTIAL` до CI на этих ревизиях. F0.8 дополнительно не проверена на Python 3.10, отсутствующем на машине.
 
 Ранее выполненные прототипные улучшения (состояние на дату раздела)
 ---------------------------------------
@@ -167,3 +167,11 @@ F0.7 — host-window backend (PARTIAL)
 - Введён `HostWindowBackend` и вынесены Win32 embed/resize вызовы из Tk-класса редактора.
 - Backend вне Windows показывает GLFW viewport отдельным окном; графический renderer не менялся.
 - Headless-тесты проверяют backend selection и вызов show_window. Полные проверки: pytest `50 passed, 20 subtests`; Ruff lint/format, Pyright (включая явную проверку нового backend), compileall и smoke-test прошли. Ручная GUI-проверка нового поведения и CI этой ревизии не выполнены, поэтому статус остаётся `PARTIAL`.
+- Локальный коммит F0.7 создан: `b6877a6` (`feat: abstract platform viewport hosting`).
+
+F0.8 — зависимости и Python runtime (PARTIAL)
+--------------------------------------------
+- Созданы `.python-version` (`3.15.0`), lockable project/dev dependency groups и universal `uv.lock` для Python `>=3.10,<3.16`; pip-compatible requirements экспортированы с hashes.
+- CI переведён на pinned uv `0.13.6`, `uv sync --locked` и lock-aware test commands для матрицы Python 3.10/3.15.
+- Две изолированные чистые установки проверены: Python 3.15.0 (`50 passed, 20 subtests`, smoke) и 3.14.6 (`50 passed, 20 subtests`, Ruff, Pyright); экспорт требований прошёл `pip --dry-run --require-hashes`, `uv lock --check` успешен.
+- Python 3.10 runtime на машине отсутствует; CI этой ревизии ещё не запускался. Поэтому F0.8 и другие изменённые пункты остаются `PARTIAL`.

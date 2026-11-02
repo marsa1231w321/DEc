@@ -1,3 +1,28 @@
+[project]
+name = "dec-engine"
+version = "0.1.0"
+requires-python = ">=3.10,<3.16"
+dependencies = [
+    "glfw>=2.7.0",
+    "moderngl>=5.10.0",
+    "numpy>=1.26.0",
+    "Pillow>=10.0.0",
+    "trimesh>=4.0.0",
+    "pygltflib>=1.16.0",
+    "PyOpenGL>=3.1.0",
+    "PyOpenGL-accelerate>=3.1.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pyright>=1.1.400",
+    "ruff>=0.11",
+]
+
+[tool.uv]
+package = false
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]

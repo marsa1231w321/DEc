@@ -32,8 +32,9 @@ DEc — настольный прототип редактора 3D-сцен и 
 Для разработки в новой копии репозитория:
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+py -3.15 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install uv==0.13.6
+.\.venv\Scripts\uv.exe sync --locked --group dev
 .\.venv\Scripts\python.exe main.py
 ```
 
@@ -43,7 +44,13 @@ python -m venv .venv
 .\.venv\Scripts\python.exe main.py --model path\to\model.glb
 ```
 
-В файле `requirements.txt` указаны нижние границы зависимостей, но точные версии не закреплены. Lockfile, политика обновлений и проверка установки на чистой машине — задачи Фазы 0.
+`pyproject.toml` поддерживает Python `>=3.10,<3.16`; `.python-version` задаёт локальный default `3.15.0`. CI проверяет 3.10 и 3.15. `uv.lock` фиксирует версии и hashes; `requirements.txt` и `requirements-dev.txt` — сгенерированные pip-совместимые exports, их не редактировать вручную. После изменения зависимостей запустите `uv lock`, затем экспортируйте обе requirements-команды из F0.8 в PLAN.md.
+
+```powershell
+.\.venv\Scripts\uv.exe lock
+.\.venv\Scripts\uv.exe export --locked --format requirements.txt --no-dev --no-emit-project -o requirements.txt
+.\.venv\Scripts\uv.exe export --locked --format requirements.txt --group dev --no-emit-project -o requirements-dev.txt
+```
 
 Уровень структурированных журналов разработчика задаётся переменной `DEC_LOG_LEVEL` (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`) или параметром `--log-level`. Записи JSON идут в stderr и не смешиваются с пользовательскими сообщениями в редакторе.
 
@@ -141,7 +148,8 @@ GitHub Actions run 41374289046 для `main` успешно завершился
 
 - F0.1/F0.3/F0.4/F0.5 закрыты; F0.2 локально готова, ожидает CI. Полное покрытие всех редакторских действий командами остаётся отдельной частью P2.1.
 - F0.6 структурированное логирование подключено и проходит локальные проверки; статус остаётся `PARTIAL` до CI на этой ревизии.
-- F0.7 host-window backend добавлен и headless-проверен; ручной GUI smoke вне Windows и CI этой ревизии ещё не выполнены.
+- F0.7 host-window backend добавлен и headless-проверен; ручной GUI smoke и CI этой ревизии ещё не выполнены.
+- F0.8 universal lock проверен чистой установкой на Python 3.14/3.15; матрица Python 3.10/3.15 и CI этой ревизии ожидают удалённого запуска.
 - UI diff capture пока строит transient before/after representations в памяти, но history хранит только сериализованные команды/изменения, а не полные scene snapshots. Полный контроль прямых мутаций командами остаётся отдельным пунктом P2.1.
 - Recovery хранит одну последнюю копию; интервал фиксированный, нет retention-настроек и интерфейса dirty-state.
 - Валидация не имеет классов ошибок, отчёта с переходом к свойству и полной проверки анимационных/MTL-ссылок.
