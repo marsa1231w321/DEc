@@ -175,3 +175,4 @@ F0.8 — зависимости и Python runtime (PARTIAL)
 - CI переведён на pinned uv `0.13.6`, `uv sync --locked` и lock-aware test commands для матрицы Python 3.10/3.15.
 - Две изолированные чистые установки проверены: Python 3.15.0 (`50 passed, 20 subtests`, smoke) и 3.14.6 (`50 passed, 20 subtests`, Ruff, Pyright); экспорт требований прошёл `pip --dry-run --require-hashes`, `uv lock --check` успешен.
 - Python 3.10 runtime на машине отсутствует; CI этой ревизии ещё не запускался. Поэтому F0.8 и другие изменённые пункты остаются `PARTIAL`.
+- Локальный коммит F0.8 создан: `9863711` (`build: lock Python dependencies with uv`).
