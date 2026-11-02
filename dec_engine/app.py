@@ -18,6 +18,8 @@ from .input_state import (
     key_down,
     mouse_button_down,
     poll_viewport_input,
+    pump_platform_events,
+    wait_platform_events,
 )
 from .host_window import create_host_window_backend
 from .logging_config import configure_logging, get_logger
@@ -199,7 +201,7 @@ def run_app(model_path=None):
             now = time.perf_counter()
             delta_time = min(now - previous_frame, 0.1)
             previous_frame = now
-            glfw.poll_events()
+            pump_platform_events()
             application_focused = application_has_focus(window)
             if application_focused != previous_application_focus:
                 handle_window_focus(application_focused)
@@ -207,7 +209,7 @@ def run_app(model_path=None):
 
             width, height = glfw.get_framebuffer_size(window)
             if width <= 0 or height <= 0:
-                glfw.wait_events_timeout(0.05)
+                wait_platform_events(0.05)
                 continue
 
             if application_focused:

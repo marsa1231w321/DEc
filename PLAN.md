@@ -111,11 +111,12 @@
 
 ## Bug-class — Windows 10 Snap resize завершает процесс
 
-- **Статус:** `MITIGATED / PENDING MANUAL VERIFICATION`; это дефект, не roadmap-функция.
+- **Статус:** `FIXED (pyGLFW/Python 3.15 workaround) / PENDING MANUAL SNAP CHECK`; это дефект, не roadmap-функция.
 - **Факт:** предоставленный traceback Python 3.15.0 / pyGLFW 2.11.0 завершился fatal error `PyEval_RestoreThread` внутри `glfw.poll_events()` с `current Python thread state is NULL`.
-- **Изменение:** Python-callback’и GLFW заменены опросом состояния мыши/курсора/фокуса в основном цикле; Tk resize объединён таймером 16 мс, нулевые/единичные размеры и повторный размер пропускаются.
-- **Проверка:** headless-тесты и отдельные GLFW resize/poll smoke-проверки проходят. Автоматический smoke не моделирует связку embedded GLFW + Tk или drag-to-snap.
-- **Остаток:** подтвердить вручную на Windows 10: перетащить окно к верхнему краю, дождаться Snap/maximize, восстановить/изменить размер, проверить продолжение рендера и ввод. До этого не отмечать баг исправленным окончательно.
+- **Причина:** минимальные пробы `glfw.poll_events` проходят, но в реальном цикле embedded GLFW + Tk модальный диалог/ввод приводил к падению именно GIL-отпускающей обёртки pyGLFW 2.11 на Python 3.15.
+- **Изменение:** основной цикл больше не вызывает `glfw.poll_events()`/`glfw.wait_events_timeout()`. Вместо них `dec_engine/input_state.py` выполняет `pump_platform_events()` (Win32 `PeekMessageW`/`TranslateMessage`/`DispatchMessageW` через ctypes) и `wait_platform_events()` (pump + sleep); вне Windows остаётся прежний GLFW-путь. GLFW WndProc всё равно получает WM_SIZE/WM_MOUSEMOVE/WM_KEYDOWN, поэтому framebuffer size, курсор и ввод обновляются. Python-callback’и GLFW по-прежнему не регистрируются.
+- **Проверка:** `tests/test_window_input.py` покрывает делегирование GLFW вне Windows и Win32-dispatch на Windows (9 passed); реальная проба с EditorUI + embedded GLFW + moderngl прошла 10 кадров, вернула framebuffer size и опросила курсор без падения. Headless pytest/Ruff/Pyright зелёные.
+- **Остаток:** подтвердить вручную на Windows 10: перетащить окно к верхнему краю, дождаться Snap/maximize, восстановить/изменить размер, проверить рендер и ввод.
 
 ---
 

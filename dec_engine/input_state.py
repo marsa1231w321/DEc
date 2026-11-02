@@ -1,5 +1,6 @@
 import ctypes
 import os
+import time
 
 import glfw
 
@@ -81,3 +82,62 @@ def application_has_focus(window):
     user32 = ctypes.windll.user32
     root = user32.GetAncestor(hwnd, 2)
     return bool(root and user32.GetForegroundWindow() == root)
+
+
+_WIN32_PUMP = None
+_PM_REMOVE = 0x0001
+
+
+def _win32_message_pump():
+    """Ленивая настройка PeekMessage/TranslateMessage/DispatchMessage."""
+
+    global _WIN32_PUMP
+    if _WIN32_PUMP is None:
+        from ctypes import wintypes
+
+        user32 = ctypes.windll.user32
+        user32.PeekMessageW.argtypes = (
+            ctypes.POINTER(wintypes.MSG),
+            wintypes.HWND,
+            wintypes.UINT,
+            wintypes.UINT,
+            wintypes.UINT,
+        )
+        user32.PeekMessageW.restype = wintypes.BOOL
+        user32.TranslateMessage.argtypes = (ctypes.POINTER(wintypes.MSG),)
+        user32.TranslateMessage.restype = wintypes.BOOL
+        user32.DispatchMessageW.argtypes = (ctypes.POINTER(wintypes.MSG),)
+        user32.DispatchMessageW.restype = ctypes.c_ssize_t
+        _WIN32_PUMP = (user32, wintypes)
+    return _WIN32_PUMP
+
+
+def pump_platform_events(platform=None):
+    """Обработать события ОС, не вызывая GIL-отпускающую обёртку pyGLFW.
+
+    На Windows встроенный GLFW-viewport перекачивает сообщения через Win32
+    SendMessage напрямую: pyGLFW на Python 3.15 может фатально упасть в
+    ``glfw.poll_events`` с ``PyEval_RestoreThread``/``thread state is NULL``.
+    WndProc GLFW всё равно получает WM_SIZE/WM_MOUSEMOVE/WM_KEYDOWN, поэтому
+    размеры, курсор и клавиши продолжают обновляться.
+    """
+
+    if (platform or os.name) != "nt":
+        glfw.poll_events()
+        return
+    user32, wintypes = _win32_message_pump()
+    message = wintypes.MSG()
+    while user32.PeekMessageW(ctypes.byref(message), None, 0, 0, _PM_REMOVE):
+        user32.TranslateMessage(ctypes.byref(message))
+        user32.DispatchMessageW(ctypes.byref(message))
+
+
+def wait_platform_events(timeout, platform=None):
+    """Ожидать события, не используя ``glfw.wait_events_timeout`` на Windows."""
+
+    if (platform or os.name) != "nt":
+        glfw.wait_events_timeout(timeout)
+        return
+    pump_platform_events(platform)
+    time.sleep(max(0.0, float(timeout)))
+

@@ -160,7 +160,7 @@ GitHub Actions run 41374289046 для `main` успешно завершился
 - Расчёт теней использует один направленный источник; точечные источники не создают тени, учитывается до четырёх point lights.
 - Поддержка модели зависит от `trimesh`. Submesh-материалы, albedo/metallic/roughness/emissive и назначение по граням сохраняются в формате `.DE` v7; PBR-карты пока применяются ограниченно, сложные normal/occlusion-карты и skin/animation могут теряться — отчёт о потерях возвращает `material_report`. Полный импорт анимации/экспорт сборки не реализован.
 - Физика, player controller и NPC упрощены; нет fixed timestep simulation, broadphase/narrowphase/solver, collision layers или navmesh.
-- Платформенное встраивание viewport связано с Win32. События GLFW обрабатываются опросом состояния в цикле кадров, а resize Tk-панели объединяется с задержкой 16 мс; ручная проверка привязки окна Windows Snap остаётся необходимой.
+- Платформенное встраивание viewport связано с Win32. Основной цикл качает события Win32 через `pump_platform_events()`/`wait_platform_events()` (ctypes `PeekMessageW`/`DispatchMessageW`), а не через `glfw.poll_events`: pyGLFW 2.11 на Python 3.15 мог фатально падать с `PyEval_RestoreThread`/`thread state is NULL`. Resize Tk-панели объединяется с задержкой 16 мс; ручная проверка привязки окна Windows Snap остаётся необходимой.
 
 ## Файлы команды
 

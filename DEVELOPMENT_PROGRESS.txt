@@ -248,3 +248,14 @@ P2.2 — drag-сессия гизмо для UI (расширение PARTIAL)
 - Обновлены `PLAN.md` (контекст P2.2), `DEVELOPMENT_GUIDE.md` (описание теста гизмо).
 - Статус P2.2 остаётся `PARTIAL`: drag-контракт готов для UI, но отрисовка в `renderer.py`, hit-testing и ручная GUI-проверка остаются.
 
+Fatal PyEval_RestoreThread в glfw.poll_events — исправлено (pyGLFW/3.15)
+---------------------------------------------------------------------
+- Пользователь воспроизвёл падение на `python main.py`: после загрузки `last_session.DE` процесс падал в `glfw.poll_events()` с `PyEval_RestoreThread`/`current Python thread state is NULL` (Python 3.15.0, pyGLFW 2.11.0).
+- Изоляция: минимальный `glfw.poll_events`, Tk+embed+moderngl, вложенный `wait_window`, полный `EditorUI` и даже восстановление проекта с авто-ответом проходили. Падение связано с GIL-отпускающей обёрткой pyGLFW 2.11 на Python 3.15 в реальной связке с ручным вводом/модальным диалогом.
+- `dec_engine/input_state.py`: добавлены `pump_platform_events()` и `wait_platform_events()`. На Windows сообщения качаются через ctypes `PeekMessageW`/`TranslateMessage`/`DispatchMessageW` (GLFW WndProc получает WM_SIZE/WM_MOUSEMOVE/WM_KEYDOWN), вне Windows — прежние `glfw.poll_events`/`wait_events_timeout`.
+- `dec_engine/app.py`: основной цикл переведён на `pump_platform_events()`; при нулевом framebuffer — `wait_platform_events(0.05)` (pump + sleep вместо `glfw.wait_events_timeout`).
+- `tests/test_window_input.py`: +4 теста (делегирование GLFW вне Windows, Win32-peek/translate/dispatch, wait+pump+sleep); всего 9 passed.
+- Реальная проба `EditorUI + embedded GLFW + moderngl`: 10 кадров, framebuffer size (556, 670), опрос курсора — без падения; smoke `0.1.0 5`.
+- Обновлены `PLAN.md` (bug-class → FIXED workaround, остаток ручной Snap-check), `README.md`, `DEVELOPMENT_GUIDE.md`.
+- Остаток: ручная проверка Windows 10 Snap/maximize/resize; при возврате прямого `glfw.poll_events` регрессия вернётся.
+

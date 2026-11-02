@@ -1,3 +1,4 @@
+import ctypes
 import unittest
 import tkinter as tk
 from unittest.mock import patch
@@ -5,7 +6,12 @@ from unittest.mock import patch
 import glfw
 
 from dec_engine.editor import EditorUI
-from dec_engine.input_state import ViewportInputState, poll_viewport_input
+from dec_engine.input_state import (
+    ViewportInputState,
+    poll_viewport_input,
+    pump_platform_events,
+    wait_platform_events,
+)
 
 
 class ViewportInputTests(unittest.TestCase):
@@ -72,6 +78,61 @@ class ViewportInputTests(unittest.TestCase):
         self.assertEqual(len(fake_root.scheduled), 1)
         self.assertEqual(fake_root.scheduled[0][0], 16)
         self.assertEqual(editor._viewport_resize_after_id, "resize-id")
+
+
+class PlatformEventPumpTests(unittest.TestCase):
+    def test_non_windows_pump_delegates_to_glfw(self):
+        with patch("dec_engine.input_state.glfw.poll_events") as poll:
+            pump_platform_events("posix")
+
+        poll.assert_called_once_with()
+
+    def test_windows_pump_dispatches_win32_messages(self):
+        calls = []
+
+        class FakeUser32:
+            def __init__(self):
+                self.results = iter((1, 0))
+
+            def PeekMessageW(self, _message, _hwnd, _low, _high, _remove):
+                calls.append("peek")
+                return next(self.results)
+
+            def TranslateMessage(self, _message):
+                calls.append("translate")
+                return 1
+
+            def DispatchMessageW(self, _message):
+                calls.append("dispatch")
+                return 0
+
+        class FakeWintypes:
+            def MSG(self):
+                return ctypes.c_int()
+
+        with patch(
+            "dec_engine.input_state._win32_message_pump",
+            return_value=(FakeUser32(), FakeWintypes()),
+        ):
+            pump_platform_events("nt")
+
+        self.assertEqual(calls, ["peek", "translate", "dispatch", "peek"])
+
+    def test_non_windows_wait_delegates_to_glfw(self):
+        with patch("dec_engine.input_state.glfw.wait_events_timeout") as wait:
+            wait_platform_events(0.05, "posix")
+
+        wait.assert_called_once_with(0.05)
+
+    def test_windows_wait_pumps_then_sleeps(self):
+        with (
+            patch("dec_engine.input_state.pump_platform_events") as pump,
+            patch("dec_engine.input_state.time.sleep") as sleep,
+        ):
+            wait_platform_events(0.05, "nt")
+
+        pump.assert_called_once_with("nt")
+        sleep.assert_called_once_with(0.05)
 
 
 if __name__ == "__main__":
