@@ -12,7 +12,7 @@ DEc — ЖУРНАЛ РАБОТ И ПЕРЕДАЧИ
 - Актуально: `Scene.graph` хранит сущности и иерархию; `Scene.objects`/`Scene.lights` — неизменяемые tuple-представления. F0.1 и F0.5 закрыты после успешного GitHub Actions run 41374289046.
 - Есть первые реализации undo/redo на снимках всей сцены, recovery-файла и проверки сцены. Они PARTIAL по обязательному плану, не закрывают соответствующие DoD.
 - Добавлены конфигурация CI, pytest, Ruff и Pyright, а также headless-регрессии. Удалённый Actions run успешен; branch protection остаётся настройкой GitHub-репозитория вне этих локальных коммитов.
-- F0.3 и F0.4 выполняются независимо от CI; F0.2 начнётся после выполнения их собственных критериев. P1.3 остаётся зависимой от полного F0.4.
+- F0.3/F0.4 и их критерии закрыты локальными тестами; F0.2 Command API — текущая следующая задача. P1.3 остаётся отдельной задачей Phase 1.
 
 Ранее выполненные прототипные улучшения
 ---------------------------------------
@@ -91,7 +91,7 @@ DEc — ЖУРНАЛ РАБОТ И ПЕРЕДАЧИ
 - Добавлены 10 unittest-проверок API, цикла, удаления, фильтрации, parent/child, local/world transform, сохранения/загрузки и legacy-карты.
 - Проверки последнего изменения: `python -m unittest discover -s tests -v` — 10 passed; `compileall` — exit 0; `smoke_test.py` — exit 0 (`0.1.0 5`); Pylance diagnostics для `scene.py` и теста — без замечаний. В `editor.py`/`renderer.py` есть некритичные диагностические подсказки, ошибок нет.
 - README.md, DEVELOPMENT_GUIDE.md и PLAN.md синхронизированы с текущей архитектурой, ограничениями проверки и новой очередью.
-- Ограничения: CI отсутствует; GUI/OpenGL и полный ручной сценарий редактора/runtime не запускались. F0.1 — `PARTIAL`, не `DONE`.
+- На момент первичной проверки: CI отсутствовал, GUI/OpenGL-сценарий не запускался. Позже F0.1 закрыта после подтверждённого успешного Actions run 41374289046.
 
 Состояние на момент завершения предыдущей сессии
 ------------------------------------------------
@@ -106,7 +106,7 @@ F0.5 — GitHub Actions и headless-проверки (локально пров�
 - Pyright scope намеренно ограничен scene/runtime-модулями и tests; Ruff lint проверяет базовые E4/E7/E9/F правила для `dec_engine` и `tests`, format-check пока применяется только к tests, так как старые исходники приложения не форматированы Ruff. Расширение scope записано в документации, а не замаскировано исключениями.
 - Успешная установка: `.venv` Python 3.15; `pip install -r requirements-dev.txt` прошёл, `pip check` сообщил `No broken requirements found`.
 - Финальные локальные проверки: Ruff lint — passed; Ruff format check — 2 tests already formatted; Pyright — 0 errors/warnings; pytest — 13 passed; unittest discovery — 13 passed; compileall — exit 0; `smoke_test.py` — exit 0 (`0.1.0 5`).
-- Удалённый Actions run не выполнялся: текущая рабочая папка не подключена к git/GitHub. Репозиторию ещё требуется включить workflow в branch protection/required status checks; до этого F0.5 остаётся `PARTIAL`.
+- Позже владелец подтвердил успешный Actions run; Actions API проверил run 41374289046 (`main`, conclusion `success`). F0.5 закрыта; настройка branch protection/required checks — отдельное действие в GitHub.
 
 Windows 10 Snap resize — регрессия обрабатывается
 ------------------------------------------------
@@ -117,21 +117,23 @@ Windows 10 Snap resize — регрессия обрабатывается
 - Финальные локальные проверки после изменения: pytest — 18 passed; unittest discovery — 18 passed; Ruff lint — passed; Ruff format check — 3 files already formatted; Pyright — 0 errors/warnings/informations; compileall — exit 0; `smoke_test.py` — exit 0 (`0.1.0 5`). Удалённый Actions run недоступен без Git remote.
 - Проверка точного сценария Windows 10 привязки окна к верхнему краю остаётся `PENDING`: в доступной среде невозможно имитировать пользовательский drag/snap. Исправление следует считать mitigation до ручной проверки этого сценария.
 
-F0.3 — типизированная событийная шина (PARTIAL)
+F0.3 — типизированная событийная шина (DONE)
 ----------------------------------------------
 - Добавлен `dec_engine/events.py`: базовые `Event`, `SceneChanged`, `ResourceChanged`, `SelectionChanged`, упорядоченная публикация по точному event type, snapshot списка слушателей и handle `Subscription.close()` с идемпотентной отпиской.
 - `Scene` публикует добавление/удаление/reparent/world-position; редактор публикует выбор объекта/света, загрузку пакета/модели, назначения/удаление ресурсов и широкое scene-update событие для undoable изменений.
 - Снимки сцены в editor history исключают callback-ы из pickle; восстановление сохраняет текущий event bus. Это не даёт восстановленной сцене тихо потерять активные подписки.
 - Добавлены `tests/test_event_bus.py`: проверены порядок и типовая маршрутизация, изменение подписок во время доставки, явная отписка, Scene mutation events, resource/selection event types и сериализация снимков.
-- Ограничение: autosave и validation ещё работают по существующим путям и не переведены на event subscriptions. F0.3 остаётся PARTIAL.
+- `SceneEventConsumers` подписывает dirty/revision, recovery autosave и проверку карты на `SceneChanged`/`ResourceChanged`. Playtest/save используют актуальный cached validation result; подписки закрываются при замене сцены и завершении редактора.
+- Проверка завершения: полный pytest — 34 passed, 18 subtests; Ruff lint/format — passed; Pyright — 0 diagnostics; `smoke_test.py` — passed.
 
-F0.4 — version marker, migration shell и golden карты (PARTIAL)
+F0.4 — version marker, migration shell и golden карты (DONE)
 -------------------------------------------------------------
 - В `dec_engine/project.py` задан `CURRENT_PROJECT_FORMAT_VERSION = 6`; новые карты записывают `format_version: 6` плюс совместимый `version: 6`.
 - `migrate_project_manifest(old)` проверяет version marker/map format, копирует исходный manifest и последовательно проводит `format_version` через 1→2→…→6. Переход 3→4 переносит глобальные поля legacy-освещения в направленный свет; `load_project()` теперь загружает нормализованный список огней без версии-зависимой ветки. Входной dict не изменяется; неподдерживаемые/conflicting markers завершаются ясным `ValueError`.
 - Зафиксированы ZIP golden-карты `tests/fixtures/projects/legacy_v1.DE` … `legacy_v5.DE`; они построены из валидного payload карты с учетом известных различий старых version branches и не являются оригинальными пользовательскими архивами. Загрузка v4/v5 покрывает требование N-2 на дату текущей версии.
 - Добавлен `tests/test_project_migrations.py`: миграционные маршруты версий 1–6, source-version preservation, idempotency, invalid markers, загрузка всех golden-файлов, и оба version key при записи текущей карты.
-- Ограничение: другие переходы сохраняют payload, поскольку пока не подтверждены дополнительные исторические schema-различия; реальные архивные образцы улучшат confidence. Asset packs `DEcAssetPack` намеренно вне этой миграции. F0.4 PARTIAL, поэтому P1.3 остаётся BLOCKED.
+- Проверены golden-карты v1–v5: геометрия, свет и известные legacy lighting значения сохраняются; добавлены проверки отсутствующей `scene.json` и некорректного legacy lighting. Эти fixtures синтетические: оригинальных старых пользовательских карт в workspace нет.
+- Два локальных файла `ф.DE`/`фы.DE` распознаны как `DEcAssetPack` v1 (по одному asset entry) и успешно прошли `list_asset_pack`; это не карты и не golden inputs миграции. P1.3 теперь разрешена по зависимости F0.4, но остаётся отдельной задачей.
 
 Pylance и локальный Git
 ----------------------
@@ -142,5 +144,4 @@ Pylance и локальный Git
 --------------------------------
 - Владелец подтвердил успешный CI; дополнительно Actions API показал run `41374289046`, workflow `DEc CI`, branch `main`, commit `c9fb9dad0a7613bcbf6d4636ebb516419944dc71`, conclusion `success`. F0.5 и F0.1 отмечены `DONE`.
 - В рабочей папке найдены `ф.DE` и `фы.DE`; оба файла — ZIP-пакеты ассетов (`pack.json`, `DEcAssetPack`), а не карты (`scene.json`). Не классифицировать их как старые карты; проверка старых map versions использует committed golden `.DE` 1–5.
-- F0.3: добавлен `SceneEventConsumers`, подписанный на `SceneChanged`/`ResourceChanged`. Эти события увеличивают revision, помечают документ dirty и обновляют validation result; редактор использует результат для playtest/save, сохраняя recovery autosave на текущем интервале. Проверяется unsubscribe и event-driven revalidation.
-- Следующие шаги: завершить F0.3/F0.4 локальным полным набором проверок и отдельными коммитами; затем начать F0.2 Command API и транзакции, без `git push`.
+- F0.3 и F0.4 закрыты отдельными локальными проверками; F0.2 Command API и транзакции — следующий приоритет. Git push не выполнялся.

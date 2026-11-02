@@ -123,6 +123,28 @@ class ProjectMigrationTests(unittest.TestCase):
                 scene = load_project(path)
                 self.assertEqual([obj.name for obj in scene.objects], ["Golden mesh"])
                 self.assertTrue(scene.lights)
+                self.assertEqual(scene.lights[0].kind, "directional")
+                self.assertEqual(scene.lights[0].direction, (-0.8, -1.0, -0.7))
+                self.assertEqual(scene.lights[0].intensity, 1.0)
+
+    def test_map_without_manifest_reports_a_clear_error(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "missing-manifest.DE"
+            with zipfile.ZipFile(path, "w") as archive:
+                archive.writestr("not-a-map.txt", "not a DE map")
+
+            with self.assertRaisesRegex(ValueError, "missing scene.json"):
+                load_project(path)
+
+    def test_invalid_legacy_lighting_is_rejected_by_migration(self):
+        for manifest in (
+            {"version": 2, "lighting": []},
+            {"version": 3, "lighting": {}, "lights": {}},
+        ):
+            with self.subTest(manifest=manifest), self.assertRaises(ValueError):
+                migrate_project_manifest(manifest)
 
     def test_saved_maps_include_canonical_and_compatibility_version_keys(self):
         import tempfile
