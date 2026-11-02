@@ -1,0 +1,45 @@
+name: DEc CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.15"]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install project and development dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+
+      - name: Lint with Ruff
+        run: python -m ruff check dec_engine tests
+
+      - name: Check formatting with Ruff
+        run: python -m ruff format --check tests
+
+      - name: Type check with Pyright
+        run: python -m pyright
+
+      - name: Run headless tests
+        run: python -m pytest -q

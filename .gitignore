@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+**/__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.py[cod]
+
+ф.DE
+фы.DE
+e621.png
+imgui.ini
