@@ -285,7 +285,6 @@ class GizmoGeometryTests(unittest.TestCase):
             gizmo.gizmo_line_segments(gizmo.TRANSLATE, size=0.0)
 
 
-
 class GizmoDragSessionTests(unittest.TestCase):
     def _session(self, mode):
         settings = gizmo.GizmoSettings(mode=mode)
@@ -360,6 +359,7 @@ class GizmoDragSessionTests(unittest.TestCase):
                 settings=gizmo.GizmoSettings(mode=gizmo.SCALE),
                 mode=gizmo.SCALE,
             )
+
 
 if __name__ == "__main__":
     unittest.main()
