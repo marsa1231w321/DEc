@@ -317,11 +317,19 @@ def save_project(path, scene: Scene) -> None:
 
 
 def load_project(path) -> Scene:
-    with zipfile.ZipFile(path, "r") as archive:
+    try:
+        archive_handle = zipfile.ZipFile(path, "r")
+    except zipfile.BadZipFile as error:
+        raise ValueError(
+            "Project file is not a valid .DE archive (corrupt or not a ZIP container)."
+        ) from error
+    with archive_handle as archive:
         try:
             manifest = migrate_project_manifest(json.loads(archive.read("scene.json")))
         except KeyError as error:
             raise ValueError("Project file is missing scene.json") from error
+        except json.JSONDecodeError as error:
+            raise ValueError("Project file contains invalid scene.json") from error
         scene = Scene()
         scene.graph.clear()
         for item in manifest.get("lights", []):
@@ -377,9 +385,14 @@ def load_project(path) -> Scene:
         ).hexdigest()
         for item in manifest.get("objects", []):
             try:
-                with np.load(
-                    io.BytesIO(archive.read(item["mesh"])), allow_pickle=False
-                ) as data:
+                mesh_bytes = archive.read(item.get("mesh", ""))
+            except KeyError as error:
+                raise ValueError(
+                    "Project is missing mesh data for object "
+                    f"{item.get('name', '<unnamed>')!r}"
+                ) from error
+            try:
+                with np.load(io.BytesIO(mesh_bytes), allow_pickle=False) as data:
                     vertices = np.asarray(data["vertices"], dtype=np.float32)
                     normals = np.asarray(data["normals"], dtype=np.float32)
                     uvs = np.asarray(data["uvs"], dtype=np.float32)
@@ -423,10 +436,13 @@ def load_project(path) -> Scene:
                         *texture_entry.split("/"),
                     )
                     os.makedirs(os.path.dirname(texture_path), exist_ok=True)
-                    with (
-                        archive.open(texture_entry, "r") as source,
-                        open(texture_path, "wb") as target,
-                    ):
+                    try:
+                        texture_source = archive.open(texture_entry, "r")
+                    except KeyError as error:
+                        raise ValueError(
+                            f"Project is missing texture asset: {texture_entry}"
+                        ) from error
+                    with texture_source as source, open(texture_path, "wb") as target:
                         while chunk := source.read(1024 * 1024):
                             target.write(chunk)
                 audio_path = item.get("audio_path")
@@ -444,10 +460,13 @@ def load_project(path) -> Scene:
                         *audio_entry.split("/"),
                     )
                     os.makedirs(os.path.dirname(audio_path), exist_ok=True)
-                    with (
-                        archive.open(audio_entry, "r") as source,
-                        open(audio_path, "wb") as target,
-                    ):
+                    try:
+                        audio_source = archive.open(audio_entry, "r")
+                    except KeyError as error:
+                        raise ValueError(
+                            f"Project is missing audio asset: {audio_entry}"
+                        ) from error
+                    with audio_source as source, open(audio_path, "wb") as target:
                         while chunk := source.read(1024 * 1024):
                             target.write(chunk)
                 rig = None

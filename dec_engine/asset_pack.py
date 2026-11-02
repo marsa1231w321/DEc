@@ -61,7 +61,11 @@ def create_asset_pack(path, files):
 
 
 def list_asset_pack(path):
-    with zipfile.ZipFile(path, "r") as archive:
+    try:
+        archive_handle = zipfile.ZipFile(path, "r")
+    except zipfile.BadZipFile as error:
+        raise ValueError("This .DE archive is not a valid DEc asset pack.") from error
+    with archive_handle as archive:
         try:
             manifest = json.loads(archive.read("pack.json"))
         except (KeyError, json.JSONDecodeError) as error:
@@ -88,12 +92,20 @@ def list_asset_pack(path):
 
 
 def extract_asset(path, entry, destination):
-    with zipfile.ZipFile(path, "r") as archive:
+    try:
+        archive_handle = zipfile.ZipFile(path, "r")
+    except zipfile.BadZipFile as error:
+        raise ValueError("This .DE archive is not a valid DEc asset pack.") from error
+    with archive_handle as archive:
         normalized = entry.replace("\\", "/")
         if not normalized.startswith("assets/") or ".." in normalized.split("/"):
             raise ValueError(f"Unsafe asset path: {entry!r}")
+        try:
+            source = archive.open(normalized, "r")
+        except KeyError as error:
+            raise ValueError(f"Asset is missing from pack: {entry}") from error
         os.makedirs(os.path.dirname(destination), exist_ok=True)
-        with archive.open(normalized, "r") as source, open(destination, "wb") as target:
+        with source, open(destination, "wb") as target:
             while chunk := source.read(1024 * 1024):
                 target.write(chunk)
     return destination

@@ -143,12 +143,12 @@
 
 ### P1.3 — Тесты формата и миграций
 
-- **Статус:** `TODO`; prerequisite F0.4 закрыт, задача следует после незавершённых F0.
-- **Pre:** F0.4.
+- **Статус:** `PARTIAL`; DoD выполнен и подтверждён локальными headless-тестами, удалённый CI для этой ревизии ещё не запускался.
+- **Pre:** F0.4 (закрыт).
 - **Задача:** golden-карты и пакеты; проверки старых версий, битых архивов и отсутствующих зависимостей.
 - **DoD:** каждый BREAKING-переход имеет миграционный тест; повреждённый архив даёт понятную ошибку.
 - **Risk:** без golden-файлов миграции останутся ручными и будут регрессировать.
-- **Контекст:** F0.4 уже покрывает карты v1–v5, но P1.3 отдельно требует golden-проверки asset packs, битых архивов и отсутствующих зависимостей.
+- **Контекст:** F0.4 уже покрывает карты v1–v5. P1.3 добавил golden asset pack `tests/fixtures/packs/golden_v1.DE` (формат `DEcAssetPack` v1) и headless-набор `tests/test_archive_robustness.py`: list/extract golden-пакета, отказ на не-ZIP архив для `load_project`/`list_asset_pack`/`extract_asset`, битый `scene.json`, отсутствующие `meshes/*.npz`, `assets/textures/*` и `assets/sounds/*` в карте, а также отсутствующий asset из манифеста пака. Для понятных ошибок `project.py` и `asset_pack.py` перехватывают `zipfile.BadZipFile`, `json.JSONDecodeError` и `KeyError` и поднимают `ValueError`. Новых BREAKING-переходов нет, все версии 1→6 покрыты. Локально: pytest `60 passed, 20 subtests`, Ruff, Pyright, compileall и smoke-тест прошли; остаётся только удалённый CI.
 
 ### P1.4 — Пользовательский журнал ошибок
 
@@ -513,3 +513,4 @@
 3. **F0.4 Format migrations — DONE.** Golden maps v1–v5 загружаются; известная legacy lighting conversion и error cases покрыты.
 4. **F0.5 CI/headless — DONE.** Подтверждён GitHub Actions run 41374289046.
 5. **F0.1 Scene Graph — DONE.** Headless DoD включён в успешный Actions run.
+6. **P1.3 Тесты формата — PARTIAL.** Golden asset pack, битые архивы и отсутствующие зависимости покрыты headless-тестами; остаётся удалённый CI.

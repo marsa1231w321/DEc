@@ -176,3 +176,15 @@ F0.8 — зависимости и Python runtime (PARTIAL)
 - Две изолированные чистые установки проверены: Python 3.15.0 (`50 passed, 20 subtests`, smoke) и 3.14.6 (`50 passed, 20 subtests`, Ruff, Pyright); экспорт требований прошёл `pip --dry-run --require-hashes`, `uv lock --check` успешен.
 - Python 3.10 runtime на машине отсутствует; CI этой ревизии ещё не запускался. Поэтому F0.8 и другие изменённые пункты остаются `PARTIAL`.
 - Локальный коммит F0.8 создан: `9863711` (`build: lock Python dependencies with uv`).
+
+P1.3 — тесты формата, пакетов и битых архивов (PARTIAL)
+-------------------------------------------------------
+- Проверено стартовое состояние: ветка `main`, рабочее дерево чистое, ahead 7 от `origin/main`; push не выполнялся.
+- Добавлен golden asset pack `tests/fixtures/packs/golden_v1.DE` (формат `DEcAssetPack` v1, assets `assets/models/golden.obj` и `assets/textures/golden.png`).
+- Добавлен headless-набор `tests/test_archive_robustness.py`: list/extract golden-пакета; отказ на не-ZIP архив для `load_project`/`list_asset_pack`/`extract_asset`; битый `scene.json`; отсутствующие `meshes/*.npz`, `assets/textures/*`, `assets/sounds/*` в карте; отсутствующий asset из манифеста пака.
+- `dec_engine/project.py`: `load_project()` перехватывает `zipfile.BadZipFile`, `json.JSONDecodeError` и `KeyError` и поднимает понятный `ValueError` (не-ZIP, missing/invalid `scene.json`, missing mesh/texture/audio).
+- `dec_engine/asset_pack.py`: `list_asset_pack()`/`extract_asset()` отклоняют не-ZIP архив и отсутствующий asset понятным `ValueError`.
+- Новых BREAKING-переходов нет; версии 1→6 по-прежнему покрыты `tests/test_project_migrations.py` и golden-картами 1–5, task DoD по миграциям выполнен.
+- Проверки: pytest `60 passed, 20 subtests` (+10 новых); Ruff lint/format, Pyright `0 errors`, compileall и smoke-test (`0.1.0 5`) прошли.
+- Обновлены `PLAN.md` (P1.3 → `PARTIAL`, очередь), `README.md`, `DEVELOPMENT_GUIDE.md` (карта модулей и список тестов). Динамическая документация актуальна.
+- Статус оставлен `PARTIAL`: DoD подтверждён локально, но удалённый CI этой ревизии не запускался (push запрещён). Следующий независимый незаблокированный пункт — P1.1 (валидация карты: уровни blocker/warning и переход к проблемному свойству); P1.2/P1.4 зависят от незакрытых F0.2/F0.6.
