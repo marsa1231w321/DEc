@@ -224,6 +224,7 @@ def save_project(path, scene: Scene) -> None:
         "logic_actions": scene.logic_actions,
         "camera_keyframes": scene.camera_keyframes,
         "animation_tracks": scene.animation_tracks,
+        "command_history": scene.command_history,
         "shadows": {
             "enabled": scene.shadows_enabled,
             "map_size": scene.shadow_map_size,
@@ -596,5 +597,10 @@ def load_project(path) -> Scene:
                     scene.graph.reparent(node, parent_id)
             if set(components) - {node.id for node, _ in ordered_nodes}:
                 raise ValueError("Scene graph is missing object or light nodes.")
+
+        scene.command_history = manifest.get("command_history", {"undo": [], "redo": []})
+        from .commands import CommandStack
+
+        CommandStack.from_scene(scene)
 
     return scene

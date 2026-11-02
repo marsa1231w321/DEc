@@ -167,6 +167,20 @@ class SceneGraph:
         self._nodes[node.id] = node
         return node
 
+    def insert_at(self, node: NodeType, index: int) -> NodeType:
+        added = self.add(node)
+        nodes = list(self._nodes.items())
+        nodes.pop()
+        nodes.insert(min(max(index, 0), len(nodes)), (added.id, added))
+        self._nodes = dict(nodes)
+        return added
+
+    def index_of(self, node_id: str) -> int:
+        try:
+            return tuple(self._nodes).index(node_id)
+        except ValueError as error:
+            raise ValueError(f"Scene node does not exist: {node_id}") from error
+
     def clear(self) -> None:
         self._nodes.clear()
 
@@ -345,6 +359,7 @@ class Scene:
         self.logic_actions: list[dict] = []
         self.camera_keyframes: list[dict] = []
         self.animation_tracks: list[dict] = []
+        self.command_history: dict = {"undo": [], "redo": []}
         self.ambient_intensity = 0.25
         self.shadows_enabled = True
         self.shadow_map_size = 2048

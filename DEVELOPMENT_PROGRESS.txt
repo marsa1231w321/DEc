@@ -10,17 +10,17 @@ DEc — ЖУРНАЛ РАБОТ И ПЕРЕДАЧИ
 - DEc остаётся единым прототипом на Python/Tkinter/GLFW/ModernGL.
 - Карта `.DE` записывается с `format_version: 6` и совместимым `version: 6`; миграционная оболочка принимает версии 1–6, есть synthetic golden-архивы 1–5, переход 3→4 переносит legacy global lighting в список источников.
 - Актуально: `Scene.graph` хранит сущности и иерархию; `Scene.objects`/`Scene.lights` — неизменяемые tuple-представления. F0.1 и F0.5 закрыты после успешного GitHub Actions run 41374289046.
-- Есть первые реализации undo/redo на снимках всей сцены, recovery-файла и проверки сцены. Они PARTIAL по обязательному плану, не закрывают соответствующие DoD.
+- Undo/redo уже использует `CommandStack` и diff-команды с транзакциями; сохранение/загрузка `.DE` переносит command history. F0.2 локально реализована и проверена, но остаётся `PARTIAL` до CI на этой ревизии.
 - Добавлены конфигурация CI, pytest, Ruff и Pyright, а также headless-регрессии. Удалённый Actions run успешен; branch protection остаётся настройкой GitHub-репозитория вне этих локальных коммитов.
-- F0.3/F0.4 и их критерии закрыты локальными тестами; F0.2 Command API — текущая следующая задача. P1.3 остаётся отдельной задачей Phase 1.
+- F0.3/F0.4 закрыты локальными тестами; F0.2 локально готова, ожидает обновлённый CI. Следующая независимая работа Phase 0 — F0.6.
 
-Ранее выполненные прототипные улучшения
+Ранее выполненные прототипные улучшения (состояние на дату раздела)
 ---------------------------------------
 
-1. История действий — PARTIAL (план F0.2/P2.1).
+1. История действий — прежняя реализация до F0.2 (снимки в памяти).
    - Кнопки отмены/повтора, Ctrl+Z/Ctrl+Y.
    - Для ряда действий сохраняется снимок полного состояния сцены; жест перетаскивания в 2D-сетке записывается одним действием.
-   - Ограничения: максимум 30 действий и 128 МиБ; история только в памяти; отсутствуют Command API, транзакции для всех инструментов и undo после save/load.
+   - Эти ограничения устранены в текущем F0.2 ниже: единый Command API, bounded persisted history, транзакции и undo после save/load.
    - Реализация: `dec_engine/editor.py`.
 
 2. Recovery/autosave — PARTIAL (план P1.2).
@@ -102,7 +102,7 @@ F0.5 — GitHub Actions и headless-проверки (локально пров�
 - По решению владельца выбраны GitHub Actions на Windows, Python 3.10 и текущей стабильной версии (3.15); pytest запускает существующие unittest-тесты без изменения их API; Pyright; Ruff lint и format; инструменты объявлены в `requirements-dev.txt`.
 - Добавлены `.github/workflows/ci.yml` (push/PR, least-privilege contents:read), `pyproject.toml` (pytest/Pyright/Ruff) и `requirements-dev.txt` (runtime + dev dependencies).
 - Добавлен `tests/test_headless_runtime.py`: проверяет переход proximity-логики в мировых координатах, однократное срабатывание при входе/повторный вход, AABB-столкновение с parent transform и валидацию карты. Тесты не создают GLFW/OpenGL-контекст.
-- README.md и динамический DEVELOPMENT_GUIDE.md дополнены командами, платформами и границами headless-проверок; PLAN.md отражает F0.5 как PARTIAL до подтверждения удалённого run.
+- Исторически на тот момент PLAN.md отражал F0.5 как PARTIAL до первого удалённого run; статус обновлён ниже после подтверждения GitHub Actions.
 - Pyright scope намеренно ограничен scene/runtime-модулями и tests; Ruff lint проверяет базовые E4/E7/E9/F правила для `dec_engine` и `tests`, format-check пока применяется только к tests, так как старые исходники приложения не форматированы Ruff. Расширение scope записано в документации, а не замаскировано исключениями.
 - Успешная установка: `.venv` Python 3.15; `pip install -r requirements-dev.txt` прошёл, `pip check` сообщил `No broken requirements found`.
 - Финальные локальные проверки: Ruff lint — passed; Ruff format check — 2 tests already formatted; Pyright — 0 errors/warnings; pytest — 13 passed; unittest discovery — 13 passed; compileall — exit 0; `smoke_test.py` — exit 0 (`0.1.0 5`).
@@ -121,7 +121,7 @@ F0.3 — типизированная событийная шина (DONE)
 ----------------------------------------------
 - Добавлен `dec_engine/events.py`: базовые `Event`, `SceneChanged`, `ResourceChanged`, `SelectionChanged`, упорядоченная публикация по точному event type, snapshot списка слушателей и handle `Subscription.close()` с идемпотентной отпиской.
 - `Scene` публикует добавление/удаление/reparent/world-position; редактор публикует выбор объекта/света, загрузку пакета/модели, назначения/удаление ресурсов и широкое scene-update событие для undoable изменений.
-- Снимки сцены в editor history исключают callback-ы из pickle; восстановление сохраняет текущий event bus. Это не даёт восстановленной сцене тихо потерять активные подписки.
+- `EventBus` исключает callback-ы из transient pickle capture, а команды применяются к текущему graph без замены `Scene` и потери активных подписок.
 - Добавлены `tests/test_event_bus.py`: проверены порядок и типовая маршрутизация, изменение подписок во время доставки, явная отписка, Scene mutation events, resource/selection event types и сериализация снимков.
 - `SceneEventConsumers` подписывает dirty/revision, recovery autosave и проверку карты на `SceneChanged`/`ResourceChanged`. Playtest/save используют актуальный cached validation result; подписки закрываются при замене сцены и завершении редактора.
 - Проверка завершения: полный pytest — 34 passed, 18 subtests; Ruff lint/format — passed; Pyright — 0 diagnostics; `smoke_test.py` — passed.
@@ -144,4 +144,11 @@ Pylance и локальный Git
 --------------------------------
 - Владелец подтвердил успешный CI; дополнительно Actions API показал run `41374289046`, workflow `DEc CI`, branch `main`, commit `c9fb9dad0a7613bcbf6d4636ebb516419944dc71`, conclusion `success`. F0.5 и F0.1 отмечены `DONE`.
 - В рабочей папке найдены `ф.DE` и `фы.DE`; оба файла — ZIP-пакеты ассетов (`pack.json`, `DEcAssetPack`), а не карты (`scene.json`). Не классифицировать их как старые карты; проверка старых map versions использует committed golden `.DE` 1–5.
-- F0.3 и F0.4 закрыты отдельными локальными проверками; F0.2 Command API и транзакции — следующий приоритет. Git push не выполнялся.
+- F0.3 и F0.4 закрыты отдельными локальными проверками; начата F0.2 Command API и транзакции. Git push не выполнялся.
+
+F0.2 — Command API (PARTIAL)
+----------------------------
+- Добавлен `dec_engine/commands.py`: property commands, add/remove node commands, compound transactions и единый undo/redo `CommandStack`.
+- UI history перенесена с хранимых pickle snapshots на сериализованные scene-diff commands; `.DE` сохраняет bounded undo/redo records в optional `command_history`. Для переходных legacy UI handlers before/after states временно сериализуются только в оперативной памяти для построения diff.
+- Добавлены headless-тесты операций transform/property/add/remove/logic, атомарного rollback транзакции, сериализации массивов и undo/redo после save/load.
+- Проверки этой ревизии: pytest `44 passed, 20 subtests`; Ruff lint и format, Pyright, compileall и smoke test прошли. GitHub Actions ещё не проверял эту ревизию; поэтому статус оставлен `PARTIAL`. Следующий разрешённый пункт — независимая F0.6. Git push запрещён владельцем и не выполнялся.

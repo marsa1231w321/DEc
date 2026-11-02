@@ -126,6 +126,7 @@ class ProjectMigrationTests(unittest.TestCase):
                 self.assertEqual(scene.lights[0].kind, "directional")
                 self.assertEqual(scene.lights[0].direction, (-0.8, -1.0, -0.7))
                 self.assertEqual(scene.lights[0].intensity, 1.0)
+                self.assertEqual(scene.command_history, {"undo": [], "redo": []})
 
     def test_map_without_manifest_reports_a_clear_error(self):
         import tempfile

@@ -28,6 +28,7 @@ from .asset_pack import (
     list_asset_pack,
 )
 from .camera import Camera
+from .commands import CommandStack, build_scene_delta
 from .events import ResourceChanged, SelectionChanged
 from .loader import load_model
 from .logic import KEY_CODES, LogicRuntime
@@ -52,8 +53,7 @@ def _undoable(method):
             return method(self, *args, **kwargs)
         before = self._capture_history_state()
         result = method(self, *args, **kwargs)
-        if self._record_history_change(before):
-            self.scene.notify_changed(method.__name__)
+        self._record_history_change(before, method.__name__)
         return result
 
     return wrapped
@@ -97,8 +97,6 @@ class EditorUI:
         self.closing = False
         self._history_ready = False
         self._history_suspended = False
-        self._undo_history = []
-        self._redo_history = []
         self._history_limit = 30
         self._history_memory_limit = 128 * 1024 * 1024
         self._history_gesture_before = None
@@ -130,6 +128,11 @@ class EditorUI:
 
         self.status = tk.StringVar(value="Готово")
         self._offer_recovery()
+        self.command_stack = CommandStack.from_scene(
+            self.scene,
+            max_history=self._history_limit,
+            max_memory_bytes=self._history_memory_limit,
+        )
         if self._recovered_from_autosave:
             self.status.set("Автокопия восстановлена. Сохраните карту в новый файл.")
         self._build_ui()
@@ -153,23 +156,21 @@ class EditorUI:
             self._draw_animation_curve()
 
     def _capture_history_state(self):
-        return pickle.dumps(self.scene.__dict__, protocol=pickle.HIGHEST_PROTOCOL)
+        state = self.scene.__dict__.copy()
+        state.pop("command_history", None)
+        return pickle.dumps(state, protocol=pickle.HIGHEST_PROTOCOL)
 
-    def _record_history_change(self, before: bytes) -> bool:
+    def _record_history_change(self, before: bytes, label: str) -> bool:
         after = self._capture_history_state()
         if before == after:
             return False
-        self._redo_history.clear()
-        if len(before) > self._history_memory_limit:
-            self._undo_history.clear()
-            self._redo_history.clear()
+        command = build_scene_delta(before, after, label)
+        if not command.commands:
+            return False
+        if not self.command_stack.record_applied(command):
             self.status.set(
                 "Изменение выполнено, но слишком велико для истории отмены."
             )
-            self._refresh_history_buttons()
-            return True
-        self._undo_history.append(before)
-        self._trim_history()
         self._refresh_history_buttons()
         return True
 
@@ -177,6 +178,11 @@ class EditorUI:
         previous = getattr(self, "_scene_event_consumers", None)
         if previous is not None:
             previous.close()
+        self.command_stack = CommandStack.from_scene(
+            self.scene,
+            max_history=self._history_limit,
+            max_memory_bytes=self._history_memory_limit,
+        )
         self._scene_event_consumers = SceneEventConsumers(
             self.scene, on_change=self._on_scene_event_change
         )
@@ -187,32 +193,11 @@ class EditorUI:
         self._dirty = True
         self._scene_revision += 1
 
-    def _trim_history(self):
-        while len(self._undo_history) > self._history_limit:
-            del self._undo_history[0]
-        while len(self._redo_history) > self._history_limit:
-            del self._redo_history[0]
-        total_bytes = sum(map(len, self._undo_history)) + sum(
-            map(len, self._redo_history)
-        )
-        while total_bytes > self._history_memory_limit:
-            if self._undo_history:
-                total_bytes -= len(self._undo_history.pop(0))
-            elif self._redo_history:
-                total_bytes -= len(self._redo_history.pop(0))
-            else:
-                break
-
-    def _restore_history_state(self, state, description):
+    def _refresh_after_history_change(self, description):
         selected_object = self._selected_index()
         selected_light = self._selected_light_index()
-        event_bus = self.scene.events
-        restored = pickle.loads(state)
         self._history_suspended = True
         try:
-            self.scene.__dict__.clear()
-            self.scene.__dict__.update(restored)
-            self.scene.events = event_bus
             object_index = (
                 min(selected_object, len(self.scene.objects) - 1)
                 if selected_object is not None and self.scene.objects
@@ -234,35 +219,23 @@ class EditorUI:
         finally:
             self._history_suspended = False
         self.status.set(description)
-        self.scene.notify_changed("undo_redo")
 
     def undo(self):
-        if not self._undo_history:
+        if not self.command_stack.undo():
             self.status.set("Нет действий для отмены.")
             return
-        previous = self._undo_history.pop()
-        current = self._capture_history_state()
-        if len(current) <= self._history_memory_limit:
-            self._redo_history.append(current)
-        self._restore_history_state(previous, "Последнее действие отменено.")
-        self._trim_history()
+        self._refresh_after_history_change("Последнее действие отменено.")
         self._refresh_history_buttons()
 
     def redo(self):
-        if not self._redo_history:
+        if not self.command_stack.redo():
             self.status.set("Нет действий для повтора.")
             return
-        following = self._redo_history.pop()
-        current = self._capture_history_state()
-        if len(current) <= self._history_memory_limit:
-            self._undo_history.append(current)
-        self._restore_history_state(following, "Действие повторено.")
-        self._trim_history()
+        self._refresh_after_history_change("Действие повторено.")
         self._refresh_history_buttons()
 
     def _clear_history(self):
-        self._undo_history.clear()
-        self._redo_history.clear()
+        self.command_stack.clear()
         self._history_gesture_before = None
         self._refresh_history_buttons()
 
@@ -348,10 +321,14 @@ class EditorUI:
         return summary
 
     def _refresh_history_buttons(self):
-        if not hasattr(self, "undo_button"):
+        if not hasattr(self, "undo_button") or not hasattr(self, "command_stack"):
             return
-        self.undo_button.configure(state="normal" if self._undo_history else "disabled")
-        self.redo_button.configure(state="normal" if self._redo_history else "disabled")
+        self.undo_button.configure(
+            state="normal" if self.command_stack.can_undo else "disabled"
+        )
+        self.redo_button.configure(
+            state="normal" if self.command_stack.can_redo else "disabled"
+        )
 
     def _handle_history_shortcut(self, event, action):
         focused = self.root.focus_get()
@@ -3829,7 +3806,6 @@ class EditorUI:
         try:
             self.scene = load_project(path)
             self._bind_scene_event_consumers()
-            self._clear_history()
             self._dirty = False
             self._autosaved_revision = self._scene_revision
             self.project_path = path
