@@ -7,6 +7,7 @@ from uuid import uuid4
 import numpy as np
 
 from .events import EventBus, SceneChanged
+from .materials import Material
 
 
 def _rotation_matrix(rotation):
@@ -105,6 +106,8 @@ class MeshInstance(SceneNode):
     audio_loop: bool = True
     npc_behavior: str = "idle"
     rig: dict | None = None
+    materials: tuple[Material, ...] = ()
+    material_indices: np.ndarray | None = None
 
     @property
     def local_scale(self) -> tuple[float, float, float]:

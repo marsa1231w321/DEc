@@ -220,3 +220,15 @@ P2.2 — гизмо и преобразования: headless-ядро (PARTIAL)
 - Обновлены `PLAN.md` (P2.2 → `PARTIAL`, очередь), `README.md`, `DEVELOPMENT_GUIDE.md` (строка gizmo.py и список тестов).
 - Статус `PARTIAL`: DoD «настраиваемый snapping» и «точный ввод» покрыты, но 2D/3D-визуализация гизмо в `renderer.py`, drag/hit-testing и симметрия требуют ручной GUI-проверки. Следующий независимый пункт — P2.7 (расширения сетки) или P2.5 (материалы).
 
+P2.5 — материалы, submesh и формат v7 (PARTIAL)
+---------------------------------------------
+- Создан `dec_engine/materials.py`: валидируемый `Material` (albedo/base_color, metallic, roughness, emissive, emissive_strength, alpha_mode, texture-поля) с `to_dict`/`from_dict`/`with_texture`.
+- `dec_engine/loader.py`: `MeshData` получил `materials`, `material_indices`, `material_report`; `geometry_part()` извлекает материал каждой части сцены и фиксирует потери карт, `combine_geometry_parts()` склеивает части с корректными смещениями индексов и per-face `material_indices`; `ModelLoader.load()` обходит все геометрии сцены и логирует число материалов/проблем.
+- `dec_engine/scene.py`: `MeshInstance` получил `materials` и `material_indices`.
+- `dec_engine/project.py`: формат `.DE` поднят до v7; материалы пишутся в manifest объектом `materials`, индексы — в NPZ `material_indices`; при загрузке материалы восстанавливаются, проверяются длина/диапазон индексов, не-список материалов отклоняется.
+- Создана golden-карта `tests/fixtures/projects/legacy_v6.DE`; тест миграций проходит для версий 1–7.
+- Добавлены `tests/test_materials.py` (15 проверок): модель и сериализация материала, склейка submesh и отчёт о текстурах, round-trip `.DE` с материалами/индексами, legacy-объект без материалов, отказ на out-of-range/shape-mismatch/не-список.
+- Проверки: pytest `131 passed, 22 subtests`; Ruff lint/format, Pyright `0 errors`, compileall и smoke-test прошли.
+- Обновлены `PLAN.md` (P2.5 → `PARTIAL`, очередь), `README.md`, `DEVELOPMENT_GUIDE.md` (строка материалов, версии 1–7 и список тестов).
+- Статус `PARTIAL`: DoD по submesh-материалам и отчёту о потерях выполнен и покрыт headless-тестами; применение PBR-карт в `renderer.py`, раздельное сохранение карт submesh и ручная GUI-проверка остаются.
+

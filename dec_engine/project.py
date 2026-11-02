@@ -10,13 +10,14 @@ from uuid import uuid4
 import numpy as np
 
 from .logging_config import get_logger
+from .materials import Material
 from .scene import Light, MeshInstance, Scene, TransformNode
 
 
 _logger = get_logger(__name__)
 
 _PROJECT_ASSET_CACHE = tempfile.TemporaryDirectory(prefix="dec-project-assets-")
-CURRENT_PROJECT_FORMAT_VERSION = 6
+CURRENT_PROJECT_FORMAT_VERSION = 7
 _SUPPORTED_PROJECT_FORMAT_VERSIONS = frozenset(
     range(1, CURRENT_PROJECT_FORMAT_VERSION + 1)
 )
@@ -264,6 +265,10 @@ def save_project(path, scene: Scene) -> None:
             if obj.rig:
                 mesh_data["rig_base_vertices"] = obj.rig["base_vertices"]
                 mesh_data["rig_weights"] = obj.rig["weights"]
+            if obj.material_indices is not None:
+                mesh_data["material_indices"] = np.asarray(
+                    obj.material_indices, dtype=np.int32
+                )
             np.savez_compressed(arrays, **mesh_data)
             archive.writestr(mesh_path, arrays.getvalue())
             texture_entry = None
@@ -302,6 +307,9 @@ def save_project(path, scene: Scene) -> None:
                     "audio_loop": obj.audio_loop,
                     "npc_behavior": obj.npc_behavior,
                     "rig": ({"bones": obj.rig["bones"]} if obj.rig else None),
+                    "materials": [
+                        material.to_dict() for material in obj.materials
+                    ],
                 }
             )
         archive.writestr(
@@ -406,6 +414,11 @@ def load_project(path) -> Scene:
                     else:
                         rig_base_vertices = None
                         rig_weights = None
+                    material_indices = (
+                        np.asarray(data["material_indices"], dtype=np.int32)
+                        if "material_indices" in data.files
+                        else None
+                    )
                 if (
                     vertices.ndim != 2
                     or vertices.shape[1] != 3
@@ -503,6 +516,32 @@ def load_project(path) -> Scene:
                         "base_vertices": rig_base_vertices,
                         "weights": rig_weights,
                     }
+                materials_data = item.get("materials") or []
+                if not isinstance(materials_data, list):
+                    raise ValueError(
+                        "Invalid materials for object "
+                        f"{item.get('name', '<unnamed>')!r}"
+                    )
+                materials = tuple(
+                    Material.from_dict(entry) for entry in materials_data
+                )
+                face_count = len(indices) // 3
+                if material_indices is not None:
+                    if material_indices.shape != (face_count,):
+                        raise ValueError(
+                            "Invalid material indices for object "
+                            f"{item.get('name', '<unnamed>')!r}: "
+                            f"expected {face_count} faces"
+                        )
+                    if len(material_indices) and (
+                        not materials
+                        or material_indices.min() < 0
+                        or material_indices.max() >= len(materials)
+                    ):
+                        raise ValueError(
+                            "Invalid material indices for object "
+                            f"{item.get('name', '<unnamed>')!r}: index out of range"
+                        )
                 scene.add_mesh(
                     MeshInstance(
                         id=str(item.get("node_id") or uuid4()),
@@ -532,6 +571,8 @@ def load_project(path) -> Scene:
                         audio_loop=bool(item.get("audio_loop", True)),
                         npc_behavior=str(item.get("npc_behavior", "idle")),
                         rig=rig,
+                        materials=materials,
+                        material_indices=material_indices,
                     )
                 )
             except KeyError as error:

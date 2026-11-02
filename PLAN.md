@@ -200,11 +200,12 @@
 
 ### P2.5 — Материалы
 
-- **Статус:** `TODO`
-- **Pre:** F0.1.
+- **Статус:** `PARTIAL`; модель `Material`, submesh-назначение и сериализация формата v7 реализованы и покрыты headless-тестами; PBR-карты в рендере и ручная GUI-проверка остаются.
+- **Pre:** F0.1 (закрыт).
 - **Задача:** отдельные материалы с albedo/normal/roughness/metallic/emissive, назначение по submesh, сохранение исходных карт там, где их отдаёт импортёр.
 - **DoD:** submesh materials для поддерживаемых `trimesh` форматов; явный отчёт о потерях для остальных.
 - **Risk:** `trimesh` поддерживает submesh частично; пределы импорта описать до начала задачи.
+- **Контекст:** `dec_engine/materials.py` даёт валидируемый `Material` (albedo/base_color, metallic, roughness, emissive, alpha_mode, texture-поля) с `to_dict`/`from_dict`; `loader.py` извлекает материал каждой части сцены, собирает `materials`/`material_indices` и возвращает `material_report` о потерях; `MeshInstance` хранит эти поля; формат `.DE` поднят до v7 с golden `legacy_v6.DE`; покрытие — `tests/test_materials.py`. Остаток: применение PBR-карт в `renderer.py`, сохранение отдельных карт submesh и ручная GUI-проверка.
 
 ### P2.6 — Ландшафт
 
@@ -519,3 +520,4 @@
 7. **P1.1 Валидация карты — PARTIAL.** Уровни blocker/warning, контекст объекта/свойства, блокировка теста и навигационный отчёт реализованы; остаются ручная GUI-проверка, MTL-проверка и удалённый CI.
 8. **P2.3 Слои, иерархия и поиск — PARTIAL.** `Scene.search_nodes()` и `Scene.rename_node()` готовы и покрыты headless-тестами; GUI-дерево, папки, массовое редактирование и lock/visibility остаются.
 9. **P2.2 Гизмо — PARTIAL.** `dec_engine/gizmo.py` (оси, snapping, pivots, измерения, геометрия) готов и покрыт тестами; отрисовка и drag в 2D/3D требуют ручной GUI-проверки.
+10. **P2.5 Материалы — PARTIAL.** `Material`, submesh-назначение и сериализация v7 готовы и покрыты headless-тестами; PBR-карты в рендере и ручная GUI-проверка остаются.
