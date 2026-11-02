@@ -9,6 +9,7 @@ from dec_engine.events import (
     SceneChanged,
     SelectionChanged,
 )
+from dec_engine.scene_observers import SceneEventConsumers
 from dec_engine.scene import MeshInstance, Scene, TransformNode
 
 
@@ -113,6 +114,48 @@ class EventBusTests(unittest.TestCase):
         restored_bus = snapshot["events"]
         self.assertEqual(restored_bus.listener_count(), 0)
         self.assertEqual(scene.events.listener_count(), 1)
+
+    def test_scene_event_consumers_drive_dirty_state_and_validation(self):
+        scene = Scene()
+        observed = []
+        consumers = SceneEventConsumers(
+            scene,
+            on_change=lambda revision, problems: observed.append((revision, problems)),
+        )
+        self.assertFalse(consumers.dirty)
+        self.assertFalse(consumers.validation_problems)
+
+        mesh = make_mesh("Mesh")
+        scene.add_mesh(mesh)
+        self.assertTrue(consumers.dirty)
+        self.assertEqual(consumers.revision, 1)
+
+        consumers.mark_saved()
+        self.assertFalse(consumers.dirty)
+        mesh.color = (2.0, 0.0, 0.0)
+        scene.notify_changed("color")
+        self.assertTrue(consumers.dirty)
+        self.assertEqual(consumers.revision, 2)
+        self.assertTrue(
+            any("каналы цвета" in item for item in consumers.validation_problems)
+        )
+        self.assertEqual(observed[-1][0], 2)
+
+        mesh.texture_path = "missing.png"
+        scene.events.publish(
+            ResourceChanged("texture", "assigned", "missing.png", mesh.id)
+        )
+        self.assertEqual(consumers.revision, 3)
+        self.assertTrue(
+            any(
+                "файл текстура не найден" in item
+                for item in consumers.validation_problems
+            )
+        )
+
+        consumers.close()
+        scene.notify_changed("after-close")
+        self.assertEqual(consumers.revision, 3)
 
 
 if __name__ == "__main__":

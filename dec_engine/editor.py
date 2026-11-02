@@ -33,8 +33,8 @@ from .loader import load_model
 from .logic import KEY_CODES, LogicRuntime
 from .project import load_project, save_project
 from .scene import Light, MeshInstance, Scene
+from .scene_observers import SceneEventConsumers
 from .timeline import apply_camera_keyframes, capture_camera
-from .validation import validate_scene
 
 
 def _is_float(value):
@@ -51,10 +51,8 @@ def _undoable(method):
         if not self._history_ready or self._history_suspended:
             return method(self, *args, **kwargs)
         before = self._capture_history_state()
-        previous_revision = self._scene_revision
         result = method(self, *args, **kwargs)
-        self._record_history_change(before)
-        if self._scene_revision != previous_revision:
+        if self._record_history_change(before):
             self.scene.notify_changed(method.__name__)
         return result
 
@@ -135,6 +133,9 @@ class EditorUI:
         if self._recovered_from_autosave:
             self.status.set("Автокопия восстановлена. Сохраните карту в новый файл.")
         self._build_ui()
+        self._bind_scene_event_consumers()
+        if self._recovered_from_autosave:
+            self.scene.notify_changed("recovery_loaded")
         self._refresh_objects()
         self._refresh_lighting_fields()
         self._refresh_logic()
@@ -154,13 +155,11 @@ class EditorUI:
     def _capture_history_state(self):
         return pickle.dumps(self.scene.__dict__, protocol=pickle.HIGHEST_PROTOCOL)
 
-    def _record_history_change(self, before):
+    def _record_history_change(self, before: bytes) -> bool:
         after = self._capture_history_state()
         if before == after:
-            return
+            return False
         self._redo_history.clear()
-        self._dirty = True
-        self._scene_revision += 1
         if len(before) > self._history_memory_limit:
             self._undo_history.clear()
             self._redo_history.clear()
@@ -168,10 +167,25 @@ class EditorUI:
                 "Изменение выполнено, но слишком велико для истории отмены."
             )
             self._refresh_history_buttons()
-            return
+            return True
         self._undo_history.append(before)
         self._trim_history()
         self._refresh_history_buttons()
+        return True
+
+    def _bind_scene_event_consumers(self):
+        previous = getattr(self, "_scene_event_consumers", None)
+        if previous is not None:
+            previous.close()
+        self._scene_event_consumers = SceneEventConsumers(
+            self.scene, on_change=self._on_scene_event_change
+        )
+
+    def _on_scene_event_change(
+        self, _revision: int, _problems: tuple[str, ...]
+    ) -> None:
+        self._dirty = True
+        self._scene_revision += 1
 
     def _trim_history(self):
         while len(self._undo_history) > self._history_limit:
@@ -232,8 +246,6 @@ class EditorUI:
             self._redo_history.append(current)
         self._restore_history_state(previous, "Последнее действие отменено.")
         self._trim_history()
-        self._dirty = True
-        self._scene_revision += 1
         self._refresh_history_buttons()
 
     def redo(self):
@@ -246,8 +258,6 @@ class EditorUI:
             self._undo_history.append(current)
         self._restore_history_state(following, "Действие повторено.")
         self._trim_history()
-        self._dirty = True
-        self._scene_revision += 1
         self._refresh_history_buttons()
 
     def _clear_history(self):
@@ -290,8 +300,6 @@ class EditorUI:
                 "Не удалось восстановить автокопию", str(error), parent=self.root
             )
             return
-        self._dirty = True
-        self._scene_revision += 1
         self._recovered_from_autosave = True
         self._recovery_is_current = True
 
@@ -3372,7 +3380,7 @@ class EditorUI:
 
     def toggle_playtest(self):
         if not self.playtest_active:
-            problems = validate_scene(self.scene)
+            problems = self._scene_event_consumers.validation_problems
             if problems:
                 messagebox.showerror(
                     "Проверка карты не пройдена",
@@ -3798,9 +3806,9 @@ class EditorUI:
             return
         self.scene = Scene()
         self.scene.add_ground()
+        self._bind_scene_event_consumers()
         self._clear_history()
-        self._dirty = True
-        self._scene_revision += 1
+        self.scene.notify_changed("new_project")
         self.project_path = None
         self.playhead = 0.0
         self.timeline_playing = False
@@ -3820,6 +3828,7 @@ class EditorUI:
             return
         try:
             self.scene = load_project(path)
+            self._bind_scene_event_consumers()
             self._clear_history()
             self._dirty = False
             self._autosaved_revision = self._scene_revision
@@ -3838,7 +3847,7 @@ class EditorUI:
             )
 
     def save_current_project(self):
-        problems = validate_scene(self.scene)
+        problems = self._scene_event_consumers.validation_problems
         if problems and not messagebox.askyesno(
             "Проблемы карты",
             "Перед сохранением найдены проблемы:\n\n"
@@ -3860,6 +3869,7 @@ class EditorUI:
             self.project_path = path
             self._dirty = False
             self._autosaved_revision = self._scene_revision
+            self._scene_event_consumers.mark_saved()
             self.status.set(f"Карта сохранена: {path}")
             self._remove_recovery_copy()
         except (OSError, ValueError) as error:
@@ -4538,6 +4548,7 @@ class EditorUI:
                 self._write_recovery_copy()
             except (OSError, ValueError) as error:
                 self.status.set(f"Не удалось сохранить автокопию: {error}")
+        self._scene_event_consumers.close()
         self.clear_asset_preview()
         self.audio_player.stop()
         self.asset_cache.cleanup()
