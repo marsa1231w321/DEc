@@ -128,10 +128,10 @@ F0.3 — типизированная событийная шина (PARTIAL)
 F0.4 — version marker, migration shell и golden карты (PARTIAL)
 -------------------------------------------------------------
 - В `dec_engine/project.py` задан `CURRENT_PROJECT_FORMAT_VERSION = 6`; новые карты записывают `format_version: 6` плюс совместимый `version: 6`.
-- `migrate_project_manifest(old)` проверяет version marker/map format, копирует исходный manifest, последовательно проводит `format_version` через 1→2→…→6 и сохраняет `source_version` для существующих условных ветвей legacy loader. Входной dict не изменяется; неподдерживаемые/conflicting markers завершаются ясным `ValueError`.
+- `migrate_project_manifest(old)` проверяет version marker/map format, копирует исходный manifest и последовательно проводит `format_version` через 1→2→…→6. Переход 3→4 переносит глобальные поля legacy-освещения в направленный свет; `load_project()` теперь загружает нормализованный список огней без версии-зависимой ветки. Входной dict не изменяется; неподдерживаемые/conflicting markers завершаются ясным `ValueError`.
 - Зафиксированы ZIP golden-карты `tests/fixtures/projects/legacy_v1.DE` … `legacy_v5.DE`; они построены из валидного payload карты с учетом известных различий старых version branches и не являются оригинальными пользовательскими архивами. Загрузка v4/v5 покрывает требование N-2 на дату текущей версии.
 - Добавлен `tests/test_project_migrations.py`: миграционные маршруты версий 1–6, source-version preservation, idempotency, invalid markers, загрузка всех golden-файлов, и оба version key при записи текущей карты.
-- Ограничение: переходы пока канонизируют версионный конверт, а преобразование payload по старым schema-веткам остаётся в `load_project`; реальные архивные образцы улучшат confidence. Asset packs `DEcAssetPack` намеренно вне этой миграции. F0.4 PARTIAL, поэтому P1.3 остаётся BLOCKED.
+- Ограничение: другие переходы сохраняют payload, поскольку пока не подтверждены дополнительные исторические schema-различия; реальные архивные образцы улучшат confidence. Asset packs `DEcAssetPack` намеренно вне этой миграции. F0.4 PARTIAL, поэтому P1.3 остаётся BLOCKED.
 
 Pylance и локальный Git
 ----------------------

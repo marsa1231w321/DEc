@@ -42,6 +42,69 @@ class ProjectMigrationTests(unittest.TestCase):
         self.assertEqual(migrated_twice, migrated_once)
         self.assertEqual(migrated_twice["source_version"], 3)
 
+    def test_legacy_global_lighting_migrates_into_directional_light(self):
+        legacy_lighting = {
+            "direction": [-0.2, -0.8, -0.4],
+            "color": [0.2, 0.3, 0.4],
+            "intensity": 0.35,
+        }
+        version_two = migrate_project_manifest(
+            {"version": 2, "lighting": legacy_lighting}
+        )
+        self.assertEqual(len(version_two["lights"]), 1)
+        self.assertEqual(version_two["lights"][0]["direction"], [-0.2, -0.8, -0.4])
+        self.assertEqual(version_two["lights"][0]["color"], [0.2, 0.3, 0.4])
+        self.assertEqual(version_two["lights"][0]["intensity"], 0.35)
+
+        version_three = migrate_project_manifest(
+            {
+                "version": 3,
+                "lighting": legacy_lighting,
+                "lights": [
+                    {
+                        "node_id": "point-id",
+                        "name": "Point",
+                        "kind": "point",
+                    },
+                    {
+                        "node_id": "sun-id",
+                        "name": "Sun",
+                        "kind": "directional",
+                        "direction": [0.0, -1.0, 0.0],
+                        "color": [1.0, 1.0, 1.0],
+                        "intensity": 1.0,
+                    },
+                ],
+            }
+        )
+        directional = version_three["lights"][1]
+        self.assertEqual(directional["node_id"], "sun-id")
+        self.assertEqual(directional["direction"], legacy_lighting["direction"])
+        self.assertEqual(directional["color"], legacy_lighting["color"])
+        self.assertEqual(directional["intensity"], legacy_lighting["intensity"])
+
+    def test_version_four_does_not_apply_legacy_global_light_overrides(self):
+        current_light = {
+            "name": "Sun",
+            "kind": "directional",
+            "direction": [0.0, -1.0, 0.0],
+            "color": [1.0, 1.0, 1.0],
+            "intensity": 2.0,
+        }
+        migrated = migrate_project_manifest(
+            {
+                "version": 4,
+                "format": "DEcProject",
+                "lighting": {
+                    "direction": [1.0, 0.0, 0.0],
+                    "color": [0.0, 0.0, 0.0],
+                    "intensity": 0.0,
+                },
+                "lights": [current_light],
+            }
+        )
+        self.assertEqual(migrated["lights"], [current_light])
+
     def test_invalid_or_conflicting_versions_are_rejected(self):
         for manifest in (
             {"version": 0},

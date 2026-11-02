@@ -115,11 +115,11 @@ F0.5 остаётся `PARTIAL`, пока workflow не выполнится н�
 
 ## Формат проекта и совместимость
 
-Карта `.DE` — ZIP, manifest `scene.json` указывает `format: DEcProject`, `format_version: 6` и совместимый `version: 6`; массивы сеток хранятся в NPZ. `migrate_project_manifest(old)` переводит manifest версий 1–6 к текущему маркеру, сохраняя `source_version` для условной обработки legacy-полей в загрузчике. Golden ZIP-карты версий 1–5 и миграционные тесты находятся в `tests/fixtures/projects/` и `tests/test_project_migrations.py`. Пакеты ассетов (`DEcAssetPack`, версия 1) этим мигратором не затрагиваются.
+Карта `.DE` — ZIP, manifest `scene.json` указывает `format: DEcProject`, `format_version: 6` и совместимый `version: 6`; массивы сеток хранятся в NPZ. `migrate_project_manifest(old)` последовательно переводит manifest версий 1–6 к текущей схеме, сохраняя исходную версию; переход 3→4 переносит старые глобальные параметры направленного света в список `lights`. Golden ZIP-карты версий 1–5 и миграционные тесты находятся в `tests/fixtures/projects/` и `tests/test_project_migrations.py`. Пакеты ассетов (`DEcAssetPack`, версия 1) этим мигратором не затрагиваются.
 
 Пакет ассетов `.DE` — ZIP с `pack.json` (`format: DEcAssetPack`, `version: 1`) и файлами внутри `assets/`. Это отдельная схема от карт, хотя расширение одинаковое. Формат не шифруется и не является механизмом доступа.
 
-Перед изменением схемы/manifest, правил ссылок или семантики ресурсов обновляйте `CURRENT_PROJECT_FORMAT_VERSION`, добавляйте последовательную миграцию и golden-тест. Текущие переходы 1→6 нормализуют version marker; legacy-правила payload пока остаются в `load_project` и не считаются полностью вынесенными в миграторы.
+Перед изменением схемы/manifest, правил ссылок или семантики ресурсов обновляйте `CURRENT_PROJECT_FORMAT_VERSION`, добавляйте последовательную миграцию и golden-тест. Переходы без известных изменений пока сохраняют payload; историческое преобразование глобального освещения выполняется в `migrate_project_manifest`, а `load_project` получает уже нормализованный manifest.
 
 ## Текущее поведение редактора
 

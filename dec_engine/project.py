@@ -23,12 +23,58 @@ def _advance_manifest_version(manifest, next_version):
     return manifest
 
 
+def _migrate_v3_to_v4(manifest):
+    source_version = manifest["source_version"]
+    if source_version >= 4:
+        return _advance_manifest_version(manifest, 4)
+
+    lighting = manifest.get("lighting", {})
+    if not isinstance(lighting, dict):
+        raise ValueError("Invalid legacy lighting data in project.")
+
+    if source_version < 3:
+        lights = []
+    else:
+        lights = manifest.get("lights", [])
+        if not isinstance(lights, list):
+            raise ValueError("Invalid legacy light list in project.")
+
+    directional = next(
+        (
+            light
+            for light in lights
+            if isinstance(light, dict) and light.get("kind") == "directional"
+        ),
+        None,
+    )
+    legacy_light_fields = ("direction", "color", "intensity")
+    if directional is None and any(field in lighting for field in legacy_light_fields):
+        directional = {
+            "name": "Sun",
+            "kind": "directional",
+            "position": [0.0, 0.0, 0.0],
+            "direction": [-0.8, -1.0, -0.7],
+            "color": [1.0, 0.96, 0.88],
+            "intensity": 1.0,
+            "enabled": True,
+            "cast_shadows": True,
+        }
+        lights.append(directional)
+    if directional is not None:
+        for field in legacy_light_fields:
+            if field in lighting:
+                directional[field] = lighting[field]
+    manifest["lights"] = lights
+    return _advance_manifest_version(manifest, 4)
+
+
 _PROJECT_MIGRATIONS = {
     version: (
         lambda manifest, target=version + 1: _advance_manifest_version(manifest, target)
     )
     for version in range(1, CURRENT_PROJECT_FORMAT_VERSION)
 }
+_PROJECT_MIGRATIONS[3] = _migrate_v3_to_v4
 
 
 def migrate_project_manifest(old):
@@ -63,6 +109,7 @@ def migrate_project_manifest(old):
         raise ValueError("This .DE archive is not a DEc map.")
 
     manifest = original
+    manifest["source_version"] = source_version
     version = declared_version
     while version < CURRENT_PROJECT_FORMAT_VERSION:
         migrate_step = _PROJECT_MIGRATIONS.get(version)
@@ -264,25 +311,22 @@ def load_project(path) -> Scene:
             manifest = migrate_project_manifest(json.loads(archive.read("scene.json")))
         except KeyError as error:
             raise ValueError("Project file is missing scene.json") from error
-        version = manifest["source_version"]
-
         scene = Scene()
         scene.graph.clear()
-        if version >= 3:
-            for item in manifest.get("lights", []):
-                scene.add_light(
-                    Light(
-                        id=str(item.get("node_id") or uuid4()),
-                        name=str(item["name"]),
-                        kind=str(item["kind"]),
-                        position=tuple(float(value) for value in item["position"]),
-                        direction=tuple(float(value) for value in item["direction"]),
-                        color=tuple(float(value) for value in item["color"]),
-                        intensity=float(item["intensity"]),
-                        enabled=bool(item.get("enabled", True)),
-                        cast_shadows=bool(item.get("cast_shadows", True)),
-                    )
+        for item in manifest.get("lights", []):
+            scene.add_light(
+                Light(
+                    id=str(item.get("node_id") or uuid4()),
+                    name=str(item["name"]),
+                    kind=str(item["kind"]),
+                    position=tuple(float(value) for value in item["position"]),
+                    direction=tuple(float(value) for value in item["direction"]),
+                    color=tuple(float(value) for value in item["color"]),
+                    intensity=float(item["intensity"]),
+                    enabled=bool(item.get("enabled", True)),
+                    cast_shadows=bool(item.get("cast_shadows", True)),
                 )
+            )
         scene.logic_actions = manifest.get("logic_actions", [])
         scene.camera_keyframes = manifest.get("camera_keyframes", [])
         scene.animation_tracks = manifest.get("animation_tracks", [])
@@ -314,14 +358,6 @@ def load_project(path) -> Scene:
         if scene.shadow_map_size not in (512, 1024, 2048, 4096):
             raise ValueError(f"Unsupported shadow map size: {scene.shadow_map_size}")
         lighting = manifest.get("lighting", {})
-        if version < 4:
-            scene.light_direction = tuple(
-                lighting.get("direction", scene.light_direction)
-            )
-            scene.light_color = tuple(lighting.get("color", scene.light_color))
-            scene.light_intensity = float(
-                lighting.get("intensity", scene.light_intensity)
-            )
         scene.ambient_intensity = float(
             lighting.get("ambient_intensity", scene.ambient_intensity)
         )
